@@ -1903,8 +1903,8 @@ function gerarHTMLEtiqueta(emb){
   const SCALE = 3.78; // px por mm (96dpi)
   const pw = Math.round(W*SCALE), ph = Math.round(H*SCALE);
   const prod = emb.produto_descricao||'';
-  const L1 = prod.substring(0,36);
-  const L2 = prod.length>36 ? prod.substring(36,72) : '';
+  const L1 = prod.substring(0,38);
+  const L2 = prod.length>38 ? prod.substring(38,76) : '';
   const prodFmt = emb.data_producao ? new Date(emb.data_producao+'T12:00:00').toLocaleDateString('pt-BR') : '--';
   const valFmt  = emb.data_validade ? new Date(emb.data_validade+'T12:00:00').toLocaleDateString('pt-BR') : '--';
   const sem = emb.semana_producao ||
@@ -1913,35 +1913,44 @@ function gerarHTMLEtiqueta(emb){
   const avTag = emb.avulso ? '<span style="background:#fff8e1;color:#b8860b;font-size:7px;padding:1px 4px;border-radius:3px;font-weight:700;margin-left:4px">AVULSA</span>' : '';
 
   return `
-  <div style="width:${pw}px;height:${ph}px;border:1.5px solid #000;box-sizing:border-box;
-    padding:5px 6px;font-family:Arial,sans-serif;font-size:9px;
+  <div style="width:${pw}px;height:${ph}px;border:2px solid #000;box-sizing:border-box;
+    padding:5px 7px;font-family:Arial,sans-serif;
     display:flex;flex-direction:column;gap:2px;overflow:hidden;page-break-inside:avoid">
-    <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.05em;border-bottom:1px solid #999;padding-bottom:2px">
+
+    <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.06em;
+      border-bottom:1px solid #bbb;padding-bottom:2px;text-transform:uppercase">
       SIMPLES E NATURAL — PRODUTO ACABADO
     </div>
-    <div style="font-size:${L2?'10px':'11.5px'};font-weight:700;line-height:1.25;color:#000">
-      ${L1}${L2?'<br>'+L2:''}
+
+    <div style="font-size:14px;font-weight:700;line-height:1.2;color:#000">
+      ${L1}${L2?'<br>'+L2:''}${avTag}
     </div>
-    <div style="display:flex;gap:4px;flex:1;min-height:0">
-      <div style="flex:1;font-size:9px;line-height:1.85;color:#333;border-top:1px solid #ddd;padding-top:3px">
-        <div><b>Cód:</b> ${emb.produto_id}${avTag}</div>
-        <div><b>Produção:</b> ${prodFmt}</div>
-        <div><b>Validade:</b> <span style="color:#c00;font-weight:700">${valFmt}</span></div>
+
+    <div style="display:flex;gap:5px;flex:1;min-height:0;border-top:1px solid #ddd;padding-top:3px">
+
+      <div style="flex:1;font-size:12px;line-height:1.6;color:#111">
+        <div><b>Cód:</b> ${emb.produto_id}</div>
+        <div><b>Prod:</b> ${prodFmt}</div>
+        <div><b>Val:</b> <span style="color:#c00;font-weight:700">${valFmt}</span></div>
         <div><b>Local:</b> ${emb.local||'—'}</div>
         <div><b>Resp:</b> ${emb.responsavel||'—'}</div>
         <div><b>Qtd:</b> ${emb.quantidade_atual} un</div>
       </div>
-      <div style="width:${Math.round(pw*0.26)}px;border:2px solid #000;border-radius:5px;
+
+      <div style="width:104px;border:2.5px solid #000;border-radius:6px;
         display:flex;flex-direction:column;align-items:center;justify-content:center;
-        background:#f8f8f8;flex-shrink:0">
-        <div style="font-size:8px;font-weight:700;color:#666;text-transform:uppercase">Semana</div>
-        <div style="font-size:${sem.toString().length<=2?Math.round(ph*0.22):Math.round(ph*0.18)}px;font-weight:900;color:#000;line-height:1">${sem}</div>
+        background:#f4f4f4;flex-shrink:0">
+        <div style="font-size:9px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.04em">Semana</div>
+        <div style="font-size:56px;font-weight:900;color:#000;line-height:1">${sem}</div>
       </div>
+
     </div>
-    <div style="border-top:1px solid #ddd;padding-top:2px">
-      <svg id="${bcId}" data-cod="${emb.codigo}" style="width:100%;height:${Math.round(ph*0.16)}px"></svg>
+
+    <div style="border-top:1px solid #ddd;padding-top:2px;display:flex;flex-direction:column;align-items:center">
+      <svg id="${bcId}" data-cod="${emb.codigo}" style="width:80%;height:${Math.round(ph*0.15)}px"></svg>
       <div style="font-size:7px;text-align:center;color:#555;overflow:hidden;white-space:nowrap">${emb.codigo}</div>
     </div>
+
   </div>`;
 }
 
