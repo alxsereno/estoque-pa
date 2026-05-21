@@ -21,7 +21,7 @@ db.exec(`
 `);
 
 app.use(express.json({ limit: '50mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 // ── API de dados ──────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ app.get('/api/ping', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 // Fallback — serve o index.html
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
