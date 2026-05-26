@@ -557,6 +557,11 @@ tr:hover td{background:#fafaf7}
         <option value="OK">OK</option>
         <option value="ZERO">Estoque zero</option>
       </select>
+      <select id="filtro-ativo" onchange="renderTabela()" style="max-width:160px">
+        <option value="ativos">Somente ativos</option>
+        <option value="">Todos</option>
+        <option value="inativos">Somente inativos</option>
+      </select>
     </div>
     <table>
       <thead><tr><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
@@ -1359,6 +1364,7 @@ const CATEGORIAS_DEFAULT = [
 // =====================================================================
 const LS_KEY  = 'estoque_pa_v1';
 const CFG_KEY = 'estoque_pa_cfg_v1';
+const PROD_KEY = 'estoque_pa_produtos_v1';
 
 let produtos     = PRODUTOS_INICIAIS.map(p=>({...p, origem:'importado', ativo:true}));
 let lotes        = []; // cada entrada gera um ou mais lotes (um por caixa)
@@ -1439,6 +1445,55 @@ async function salvarConfig(){
       body: JSON.stringify({value: {etiqueta:cfgEtiqueta, validade:cfgValidade, responsaveis:cfgResponsaveis}})
     });
   }catch(e){}
+}
+
+async function salvarProdutos(){
+  try{
+    // Salva TODOS os produtos que diferem do estado inicial:
+    // - manuais (novos)
+    // - importados modificados (desativados, descrição/categoria/unid alterados)
+    // Cria mapa do catálogo original para comparação rápida
+    const mapaOriginal = {};
+    PRODUTOS_INICIAIS.forEach(p => { mapaOriginal[String(p.codigo)] = p; });
+
+    const aSerSalvos = produtos.filter(p => {
+      if(p.origem === 'manual') return true; // sempre salva manuais
+      const orig = mapaOriginal[String(p.codigo)];
+      if(!orig) return true; // não estava no original
+      // Salva se qualquer campo relevante foi alterado
+      return (
+        p.ativo === false ||
+        p.descricao !== orig.descricao.toUpperCase() ||
+        p.categoria !== orig.categoria ||
+        p.unid_cx   !== orig.unid_cx
+      );
+    });
+
+    await fetch('/api/data/' + PROD_KEY, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({value: aSerSalvos})
+    });
+  }catch(e){ console.warn('Erro ao salvar produtos:', e); }
+}
+
+async function carregarProdutos(){
+  try{
+    const res = await fetch('/api/data/' + PROD_KEY);
+    const json = await res.json();
+    if(!json.value || !json.value.length) return;
+    const salvos = json.value;
+    salvos.forEach(ps => {
+      const idx = produtos.findIndex(p => String(p.codigo) === String(ps.codigo));
+      if(idx >= 0){
+        // Sobrescreve completamente com os dados salvos (preserva todas as edições)
+        produtos[idx] = { ...produtos[idx], ...ps };
+      } else {
+        // Produto manual novo — adiciona ao catálogo
+        produtos.push({ ...ps, ativo: ps.ativo !== false });
+      }
+    });
+  }catch(e){ console.warn('Erro ao carregar produtos:', e); }
 }
 
 async function limparTodosDados(){
@@ -2549,7 +2604,7 @@ function renderDashboard(){
 function getSaldoProdutos(){
   const disp = embalagens.filter(e => e.status === 'disponivel');
 
-  // Monta mapa produto_id → saldo
+  // Mapa produto_id → saldo
   const map = {};
   disp.forEach(e => {
     const k = String(e.produto_id);
@@ -2557,6 +2612,7 @@ function getSaldoProdutos(){
       produto_id: e.produto_id,
       descricao: e.produto_descricao,
       categoria: e.categoria,
+      ativo: true, // será sobrescrito abaixo
       cxCompletas: 0, unCompletas: 0,
       cxParciais: 0,  unParciais: 0,
       validadeMaisProxima: null,
@@ -2565,7 +2621,6 @@ function getSaldoProdutos(){
     const m = map[k];
     if (e.avulso) { m.cxParciais++; m.unParciais += e.quantidade_atual; }
     else           { m.cxCompletas++; m.unCompletas += e.quantidade_atual; }
-    // Validade mais próxima
     if (e.data_validade) {
       if (!m.validadeMaisProxima || e.data_validade < m.validadeMaisProxima)
         m.validadeMaisProxima = e.data_validade;
@@ -2575,18 +2630,25 @@ function getSaldoProdutos(){
     if (rank[st] > rank[m.piorStatus]) m.piorStatus = st;
   });
 
-  // Adiciona todos os produtos cadastrados que ainda não estão no mapa
+  // Adiciona todos os produtos cadastrados (mesmo sem estoque)
+  // e atualiza o flag ativo a partir do catálogo
   produtos.forEach(p => {
     const k = String(p.codigo);
-    if (!map[k]) map[k] = {
-      produto_id: p.codigo,
-      descricao: p.descricao,
-      categoria: p.categoria,
-      cxCompletas: 0, unCompletas: 0,
-      cxParciais: 0,  unParciais: 0,
-      validadeMaisProxima: null,
-      piorStatus: 'ZERO'
-    };
+    if (!map[k]) {
+      map[k] = {
+        produto_id: p.codigo,
+        descricao: p.descricao,
+        categoria: p.categoria,
+        ativo: p.ativo !== false,
+        cxCompletas: 0, unCompletas: 0,
+        cxParciais: 0,  unParciais: 0,
+        validadeMaisProxima: null,
+        piorStatus: 'ZERO'
+      };
+    } else {
+      // Atualiza ativo para produtos que já têm estoque
+      map[k].ativo = p.ativo !== false;
+    }
   });
 
   return Object.values(map).sort((a,b) =>
@@ -2598,6 +2660,7 @@ function renderTabela(){
   const busca  = (document.getElementById('filtro-busca').value || '').toLowerCase();
   const cat    = document.getElementById('filtro-cat').value;
   const st     = document.getElementById('filtro-status').value;
+  const ativo  = document.getElementById('filtro-ativo')?.value ?? 'ativos';
 
   const stMap = {
     VENCIDO: ['badge-danger','Vencido'],
@@ -2614,6 +2677,9 @@ function renderTabela(){
       if (st === 'ZERO' && r.piorStatus !== 'ZERO') return false;
       if (st !== 'ZERO' && r.piorStatus !== st)     return false;
     }
+    // Filtro de ativos/inativos
+    if (ativo === 'ativos'   && !r.ativo) return false;
+    if (ativo === 'inativos' &&  r.ativo) return false;
     return true;
   });
 
@@ -2628,12 +2694,16 @@ function renderTabela(){
     const totalUn = r.unCompletas + r.unParciais;
     const [cls, lbl] = stMap[r.piorStatus] || ['badge-gray','—'];
     const zero = r.piorStatus === 'ZERO';
-    return `<tr style="${zero ? 'opacity:.55' : ''}">
-      <td style="font-size:12px${zero ? ';color:#888' : ''}">${r.descricao}</td>
+    const inativo = !r.ativo;
+    return `<tr style="${zero || inativo ? 'opacity:.5' : ''}">
+      <td style="font-size:12px${zero||inativo ? ';color:#888' : ''}">
+        ${r.descricao}
+        ${inativo ? '<span style="background:#fde8e8;color:#c0392b;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px">Inativo</span>' : ''}
+      </td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
       <td style="text-align:center${r.cxCompletas ? ';color:#1e7e34;font-weight:600' : ';color:#bbb'}">${r.cxCompletas || '—'}</td>
       <td style="text-align:center${r.cxParciais  ? ';color:#b8860b;font-weight:600' : ';color:#bbb'}">${r.cxParciais  || '—'}</td>
-      <td style="text-align:center;font-weight:700;font-size:14px${zero?';color:#ccc':''}">${totalUn || '0'}</td>
+      <td style="text-align:center;font-weight:700;font-size:14px${zero||inativo?';color:#ccc':''}">${totalUn || '0'}</td>
       <td style="font-size:12px">${r.validadeMaisProxima ? fmtDate(r.validadeMaisProxima) : '—'}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
     </tr>`;
@@ -3361,12 +3431,12 @@ function salvarProduto(){
       toast('Já existe outro produto com este código');return;
     }
     p.codigo=cod;p.descricao=desc.toUpperCase();p.categoria=cat;p.unid_cx=unidCx;
-    salvarAuto();toast('Produto atualizado');
+    salvarAuto();salvarProdutos();toast('Produto atualizado');
     limparCadastroProduto();renderTabelaProdutos();
   } else {
     if(produtos.find(p=>String(p.codigo)===String(cod))){toast('Código já existe');return;}
     produtos.push({codigo:cod,descricao:desc.toUpperCase(),categoria:cat,unid_cx:unidCx,origem:'manual',ativo:true});
-    salvarAuto();toast('Produto cadastrado');
+    salvarAuto();salvarProdutos();toast('Produto cadastrado');
     limparCadastroProduto();renderTabelaProdutos();
   }
 }
@@ -3413,7 +3483,7 @@ function renderTabelaProdutos(){
 function excluirProduto(cod){
   if(!confirm('Excluir produto?'))return;
   produtos=produtos.filter(p=>String(p.codigo)!==String(cod));
-  salvarAuto();toast('Produto excluído');renderTabelaProdutos();
+  salvarAuto();salvarProdutos();toast('Produto excluído');renderTabelaProdutos();
 }
 
 // =====================================================================
@@ -3713,6 +3783,7 @@ async function importarBackup(file){
 
     salvarAuto();
     salvarConfig();
+    salvarProdutos();
     initConfig();
 
     fb.innerHTML=`<div style="background:#e6f4ea;border-radius:8px;padding:14px;font-size:13px;color:#1e7e34">
@@ -3999,6 +4070,7 @@ function salvarModalProduto(){
   p.ativo    = modalProdAtivoVal;
 
   salvarAuto();
+  salvarProdutos();
   toast('Produto atualizado');
   fecharModalProduto();
   renderTabelaProdutos();
@@ -4020,6 +4092,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   await carregarUsuarios();
   await carregarConfig();
   const savedAt = await carregarDados();
+  await carregarProdutos();
   popularSelectResponsaveis();
 
   // Injeta o logo na tela de login (usa o mesmo src do logo da sidebar)
