@@ -557,11 +557,6 @@ tr:hover td{background:#fafaf7}
         <option value="OK">OK</option>
         <option value="ZERO">Estoque zero</option>
       </select>
-      <select id="filtro-ativo" onchange="renderTabela()" style="max-width:160px">
-        <option value="ativos">Somente ativos</option>
-        <option value="">Todos</option>
-        <option value="inativos">Somente inativos</option>
-      </select>
     </div>
     <table>
       <thead><tr><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
@@ -576,11 +571,28 @@ tr:hover td{background:#fafaf7}
   <h1>Histórico</h1>
   <p class="sub">Todas as movimentações registradas</p>
   <div class="card">
+    <div class="filter-row" style="margin-bottom:16px">
+      <div class="search-wrap" style="flex:1;min-width:180px">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="hist-filtro-produto" placeholder="Buscar produto ou lote..."
+          oninput="renderHistorico()" style="padding-left:34px">
+      </div>
+      <select id="hist-filtro-tipo" onchange="renderHistorico()" style="max-width:180px">
+        <option value="">Todos os tipos</option>
+        <option value="ENTRADA">Entrada</option>
+        <option value="SAÍDA TOTAL">Saída total</option>
+        <option value="SAÍDA PARCIAL">Saída parcial</option>
+        <option value="RESÍDUO GERADO">Resíduo gerado</option>
+        <option value="AJUSTE">Ajuste</option>
+      </select>
+      <button class="btn btn-sm" onclick="limparFiltrosHistorico()" style="white-space:nowrap">Limpar filtros</button>
+    </div>
+    <div id="hist-count" style="font-size:12px;color:#888;margin-bottom:10px"></div>
     <table>
       <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Produto</th><th>Lote</th><th>Quantidade</th><th>Destino/Origem</th></tr></thead>
       <tbody id="tabela-hist"></tbody>
     </table>
-    <div id="hist-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhuma movimentação registrada.</div>
+    <div id="hist-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhuma movimentação encontrada.</div>
   </div>
 </div>
 
@@ -886,6 +898,9 @@ tr:hover td{background:#fafaf7}
           <input type="checkbox" id="filtro-prod-inativos" onchange="renderTabelaProdutos()" style="width:auto">
           Mostrar inativos
         </label>
+        <select id="filtro-prod-cat" onchange="renderTabelaProdutos()" style="max-width:180px">
+          <option value="">Todas categorias</option>
+        </select>
         <input type="text" id="filtro-prod" placeholder="Buscar..." oninput="renderTabelaProdutos()" style="max-width:200px">
       </div>
     </div>
@@ -1449,30 +1464,13 @@ async function salvarConfig(){
 
 async function salvarProdutos(){
   try{
-    // Salva TODOS os produtos que diferem do estado inicial:
-    // - manuais (novos)
-    // - importados modificados (desativados, descrição/categoria/unid alterados)
-    // Cria mapa do catálogo original para comparação rápida
-    const mapaOriginal = {};
-    PRODUTOS_INICIAIS.forEach(p => { mapaOriginal[String(p.codigo)] = p; });
-
-    const aSerSalvos = produtos.filter(p => {
-      if(p.origem === 'manual') return true; // sempre salva manuais
-      const orig = mapaOriginal[String(p.codigo)];
-      if(!orig) return true; // não estava no original
-      // Salva se qualquer campo relevante foi alterado
-      return (
-        p.ativo === false ||
-        p.descricao !== orig.descricao.toUpperCase() ||
-        p.categoria !== orig.categoria ||
-        p.unid_cx   !== orig.unid_cx
-      );
-    });
-
+    // Salva apenas os produtos modificados (origem manual ou ativo=false)
+    // para não subir os 177 importados desnecessariamente
+    const modificados = produtos.filter(p => p.origem === 'manual' || p.ativo === false);
     await fetch('/api/data/' + PROD_KEY, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({value: aSerSalvos})
+      body: JSON.stringify({value: modificados})
     });
   }catch(e){ console.warn('Erro ao salvar produtos:', e); }
 }
@@ -1486,11 +1484,11 @@ async function carregarProdutos(){
     salvos.forEach(ps => {
       const idx = produtos.findIndex(p => String(p.codigo) === String(ps.codigo));
       if(idx >= 0){
-        // Sobrescreve completamente com os dados salvos (preserva todas as edições)
+        // Atualiza produto existente (ex: desativado)
         produtos[idx] = { ...produtos[idx], ...ps };
       } else {
-        // Produto manual novo — adiciona ao catálogo
-        produtos.push({ ...ps, ativo: ps.ativo !== false });
+        // Produto manual novo — adiciona
+        produtos.push(ps);
       }
     });
   }catch(e){ console.warn('Erro ao carregar produtos:', e); }
@@ -2604,15 +2602,22 @@ function renderDashboard(){
 function getSaldoProdutos(){
   const disp = embalagens.filter(e => e.status === 'disponivel');
 
-  // Mapa produto_id → saldo
+  // Mapa produto_id → saldo (usa catálogo atual para descrição e categoria)
+  const mapProd = {};
+  produtos.forEach(p => { mapProd[String(p.codigo)] = p; });
+
   const map = {};
   disp.forEach(e => {
     const k = String(e.produto_id);
+    // Busca descrição e categoria do catálogo atual (reflete edições)
+    const prodAtual = mapProd[k];
+    const descricao = prodAtual ? prodAtual.descricao : e.produto_descricao;
+    const categoria = prodAtual ? prodAtual.categoria : e.categoria;
+
     if (!map[k]) map[k] = {
       produto_id: e.produto_id,
-      descricao: e.produto_descricao,
-      categoria: e.categoria,
-      ativo: true, // será sobrescrito abaixo
+      descricao, categoria,
+      ativo: prodAtual ? prodAtual.ativo !== false : true,
       cxCompletas: 0, unCompletas: 0,
       cxParciais: 0,  unParciais: 0,
       validadeMaisProxima: null,
@@ -2630,8 +2635,7 @@ function getSaldoProdutos(){
     if (rank[st] > rank[m.piorStatus]) m.piorStatus = st;
   });
 
-  // Adiciona todos os produtos cadastrados (mesmo sem estoque)
-  // e atualiza o flag ativo a partir do catálogo
+  // Adiciona produtos cadastrados sem estoque
   produtos.forEach(p => {
     const k = String(p.codigo);
     if (!map[k]) {
@@ -2645,9 +2649,6 @@ function getSaldoProdutos(){
         validadeMaisProxima: null,
         piorStatus: 'ZERO'
       };
-    } else {
-      // Atualiza ativo para produtos que já têm estoque
-      map[k].ativo = p.ativo !== false;
     }
   });
 
@@ -2660,7 +2661,6 @@ function renderTabela(){
   const busca  = (document.getElementById('filtro-busca').value || '').toLowerCase();
   const cat    = document.getElementById('filtro-cat').value;
   const st     = document.getElementById('filtro-status').value;
-  const ativo  = document.getElementById('filtro-ativo')?.value ?? 'ativos';
 
   const stMap = {
     VENCIDO: ['badge-danger','Vencido'],
@@ -2677,9 +2677,6 @@ function renderTabela(){
       if (st === 'ZERO' && r.piorStatus !== 'ZERO') return false;
       if (st !== 'ZERO' && r.piorStatus !== st)     return false;
     }
-    // Filtro de ativos/inativos
-    if (ativo === 'ativos'   && !r.ativo) return false;
-    if (ativo === 'inativos' &&  r.ativo) return false;
     return true;
   });
 
@@ -2694,16 +2691,12 @@ function renderTabela(){
     const totalUn = r.unCompletas + r.unParciais;
     const [cls, lbl] = stMap[r.piorStatus] || ['badge-gray','—'];
     const zero = r.piorStatus === 'ZERO';
-    const inativo = !r.ativo;
-    return `<tr style="${zero || inativo ? 'opacity:.5' : ''}">
-      <td style="font-size:12px${zero||inativo ? ';color:#888' : ''}">
-        ${r.descricao}
-        ${inativo ? '<span style="background:#fde8e8;color:#c0392b;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px">Inativo</span>' : ''}
-      </td>
+    return `<tr style="${zero ? 'opacity:.55' : ''}">
+      <td style="font-size:12px${zero ? ';color:#888' : ''}">${r.descricao}</td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
       <td style="text-align:center${r.cxCompletas ? ';color:#1e7e34;font-weight:600' : ';color:#bbb'}">${r.cxCompletas || '—'}</td>
       <td style="text-align:center${r.cxParciais  ? ';color:#b8860b;font-weight:600' : ';color:#bbb'}">${r.cxParciais  || '—'}</td>
-      <td style="text-align:center;font-weight:700;font-size:14px${zero||inativo?';color:#ccc':''}">${totalUn || '0'}</td>
+      <td style="text-align:center;font-weight:700;font-size:14px${zero?';color:#ccc':''}">${totalUn || '0'}</td>
       <td style="font-size:12px">${r.validadeMaisProxima ? fmtDate(r.validadeMaisProxima) : '—'}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
     </tr>`;
@@ -2832,11 +2825,35 @@ function imprimirSaldoEstoque(){
 }
 
 function renderHistorico(){
-  const tbody=document.getElementById('tabela-hist'),empty=document.getElementById('hist-empty');
-  if(!movs.length){tbody.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
+  const tbody=document.getElementById('tabela-hist');
+  const empty=document.getElementById('hist-empty');
+  const count=document.getElementById('hist-count');
+
+  const busca=(document.getElementById('hist-filtro-produto')?.value||'').toLowerCase();
+  const tipo =document.getElementById('hist-filtro-tipo')?.value||'';
+
+  if(!movs.length){tbody.innerHTML='';empty.style.display='block';if(count)count.textContent='';return;}
+
   const ts={'ENTRADA':'badge-ok','SAÍDA TOTAL':'badge-info','SAÍDA PARCIAL':'badge-warn','RESÍDUO GERADO':'badge-gray','AJUSTE':'badge-gray'};
-  tbody.innerHTML=[...movs].reverse().map(m=>`<tr>
+
+  const filtrados=[...movs].reverse().filter(m=>{
+    if(tipo && m.tipo!==tipo) return false;
+    if(busca && !m.produto.toLowerCase().includes(busca) && !m.codigo.toLowerCase().includes(busca) && !(m.lote||'').toLowerCase().includes(busca)) return false;
+    return true;
+  });
+
+  if(!filtrados.length){
+    tbody.innerHTML='';
+    empty.style.display='block';
+    empty.textContent='Nenhuma movimentação encontrada com os filtros selecionados.';
+    if(count) count.textContent='';
+    return;
+  }
+
+  empty.style.display='none';
+  if(count) count.textContent=filtrados.length+' de '+movs.length+' movimentações';
+
+  tbody.innerHTML=filtrados.map(m=>`<tr>
     <td style="color:#888;font-size:12px">${m.data}</td>
     <td><span class="badge ${ts[m.tipo]||'badge-gray'}" style="white-space:nowrap">${m.tipo}</span></td>
     <td>${m.produto}</td>
@@ -2844,6 +2861,14 @@ function renderHistorico(){
     <td style="font-weight:500">${m.quantidade}</td>
     <td style="color:#888">${m.destino}</td>
   </tr>`).join('');
+}
+
+function limparFiltrosHistorico(){
+  const bp=document.getElementById('hist-filtro-produto');
+  const bt=document.getElementById('hist-filtro-tipo');
+  if(bp) bp.value='';
+  if(bt) bt.value='';
+  renderHistorico();
 }
 
 // =====================================================================
@@ -3455,11 +3480,24 @@ function toggleAtivoProduto(cod){
 
 function renderTabelaProdutos(){
   const q=(document.getElementById('filtro-prod').value||'').toLowerCase();
+  const cat=(document.getElementById('filtro-prod-cat')?.value||'');
   const mostrarInativos=document.getElementById('filtro-prod-inativos')?.checked;
+
+  // Popular select de categorias dinamicamente
+  const selCat=document.getElementById('filtro-prod-cat');
+  if(selCat){
+    const catAtual=selCat.value;
+    const cats=[...new Set(produtos.map(p=>p.categoria).filter(Boolean))].sort();
+    selCat.innerHTML='<option value="">Todas categorias</option>'+
+      cats.map(c=>`<option value="${c}" ${c===catAtual?'selected':''}>${c}</option>`).join('');
+  }
+
   const lista=produtos.filter(p=>{
     if(!mostrarInativos&&p.ativo===false) return false;
+    if(cat&&p.categoria!==cat) return false;
     return !q||p.descricao.toLowerCase().includes(q)||String(p.codigo).includes(q);
   });
+
   document.getElementById('cnt-produtos').textContent=lista.length;
   document.getElementById('tabela-produtos').innerHTML=lista.map(p=>{
     const inativo=p.ativo===false;
