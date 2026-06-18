@@ -558,9 +558,14 @@ tr:hover td{background:#fafaf7}
         <option value="OK">OK</option>
         <option value="ZERO">Estoque zero</option>
       </select>
+      <select id="filtro-ativo" onchange="renderTabela()" style="max-width:160px">
+        <option value="ativos">Somente ativos</option>
+        <option value="">Todos</option>
+        <option value="inativos">Somente inativos</option>
+      </select>
     </div>
     <table>
-      <thead><tr><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
+      <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
       <tbody id="tabela-lotes"></tbody>
     </table>
     <div id="tabela-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhum produto encontrado.</div>
@@ -994,43 +999,29 @@ tr:hover td{background:#fafaf7}
     <button class="btn btn-dark" onclick="abrirModalUsuarios()">Gerenciar usuários</button>
   </div>
 
-  <!-- REQUISIÇÃO DE LOJAS -->
+  <!-- REQUISIÇÃO LOJAS -->
   <div class="card">
     <div class="card-title">Requisição de Estoque — Lojas</div>
-    <p style="font-size:12px;color:#888;margin-bottom:16px">
-      Configure a quantidade mínima de estoque (em unidades) e o lote máximo de envio (em unidades) por categoria para cada loja.
-      Quando o estoque da loja estiver abaixo do mínimo, o sistema sugerirá o envio do lote configurado.
+    <p style="font-size:12px;color:#888;margin-bottom:14px">
+      Configure o mínimo de estoque (un) e o lote máximo de envio (un) por categoria para cada loja.
     </p>
-
-    <div style="margin-bottom:14px">
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button id="req-cfg-btn-cambui" onclick="setReqCfgLoja('Cambuí')"
-          style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #1a1a18;border-radius:7px;background:#1a1a18;color:#fff;cursor:pointer">
-          Cambuí
-        </button>
-        <button id="req-cfg-btn-barao" onclick="setReqCfgLoja('Barão Geraldo')"
-          style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#555;cursor:pointer">
-          Barão Geraldo
-        </button>
-        <button id="req-cfg-btn-indaiatuba" onclick="setReqCfgLoja('Indaiatuba')"
-          style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#555;cursor:pointer">
-          Indaiatuba
-        </button>
-      </div>
-
-      <table style="width:100%;font-size:13px;border-collapse:collapse">
-        <thead>
-          <tr>
-            <th style="text-align:left;font-size:11px;font-weight:600;color:#888;padding:0 10px 8px 0;text-transform:uppercase;letter-spacing:.04em">Categoria</th>
-            <th style="text-align:center;font-size:11px;font-weight:600;color:#888;padding:0 10px 8px;text-transform:uppercase;letter-spacing:.04em">Mínimo (un)</th>
-            <th style="text-align:center;font-size:11px;font-weight:600;color:#888;padding:0 0 8px 10px;text-transform:uppercase;letter-spacing:.04em">Lote máx. envio (un)</th>
-          </tr>
-        </thead>
-        <tbody id="req-cfg-tabela"></tbody>
-      </table>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="req-cfg-btn-cambui" onclick="setReqCfgLoja('Cambuí')"
+        style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #1a1a18;border-radius:7px;background:#1a1a18;color:#fff;cursor:pointer">Cambuí</button>
+      <button id="req-cfg-btn-barao" onclick="setReqCfgLoja('Barão Geraldo')"
+        style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#555;cursor:pointer">Barão Geraldo</button>
+      <button id="req-cfg-btn-indaiatuba" onclick="setReqCfgLoja('Indaiatuba')"
+        style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#555;cursor:pointer">Indaiatuba</button>
     </div>
-
-    <div class="btn-row">
+    <table style="width:100%;font-size:13px;border-collapse:collapse">
+      <thead><tr>
+        <th style="text-align:left;font-size:11px;font-weight:600;color:#888;padding:0 10px 8px 0;text-transform:uppercase;letter-spacing:.04em">Categoria</th>
+        <th style="text-align:center;font-size:11px;font-weight:600;color:#888;padding:0 10px 8px;text-transform:uppercase;letter-spacing:.04em">Mínimo (un)</th>
+        <th style="text-align:center;font-size:11px;font-weight:600;color:#888;padding:0 0 8px 10px;text-transform:uppercase;letter-spacing:.04em">Lote máx. envio (un)</th>
+      </tr></thead>
+      <tbody id="req-cfg-tabela"></tbody>
+    </table>
+    <div class="btn-row" style="margin-top:14px">
       <button class="btn" onclick="resetarReqCfg()">Restaurar padrão</button>
       <button class="btn btn-dark" onclick="salvarReqCfg()">Salvar</button>
     </div>
@@ -1046,14 +1037,13 @@ tr:hover td{background:#fafaf7}
     <button onclick="limparTodosDados()" class="btn btn-danger">Apagar todos os dados</button>
   </div>
 
-</div>
+</div><!-- screen-config -->
 
 <!-- ===== REQUISIÇÃO DE ESTOQUE LOJAS ===== -->
 <div id="screen-requisicao" class="screen">
   <h1>Requisição de Estoque — Lojas</h1>
   <p class="sub">Cruzamento do estoque das lojas com o estoque central</p>
 
-  <!-- PASSO 1: Loja + upload -->
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <div style="width:24px;height:24px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">1</div>
@@ -1073,7 +1063,6 @@ tr:hover td{background:#fafaf7}
         🏪 Indaiatuba
       </button>
     </div>
-
     <div id="req-drop-area"
       onclick="document.getElementById('req-file-input').click()"
       ondragover="event.preventDefault();this.style.borderColor='#1a1a18'"
@@ -1089,41 +1078,22 @@ tr:hover td{background:#fafaf7}
     <div id="req-upload-status" style="display:none;margin-top:10px"></div>
   </div>
 
-  <!-- PASSO 2: Resultado -->
   <div id="req-resultado-area" style="display:none">
     <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
         <div style="width:24px;height:24px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">2</div>
         <div class="card-title" style="margin-bottom:0" id="req-titulo-resultado">Resultado do cruzamento</div>
         <div style="margin-left:auto;font-size:12px;color:#888" id="req-data-leitura"></div>
       </div>
-
-      <!-- Métricas -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-        <div style="background:#f8f8f5;border-radius:8px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Cruzados</div>
-          <div style="font-size:22px;font-weight:600" id="req-m-cruzados">0</div>
-        </div>
-        <div style="background:#fff8e1;border-radius:8px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#b8860b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Sugestões</div>
-          <div style="font-size:22px;font-weight:600;color:#b8860b" id="req-m-sugestoes">0</div>
-        </div>
-        <div style="background:#fde8e8;border-radius:8px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#c0392b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Sem saldo</div>
-          <div style="font-size:22px;font-weight:600;color:#c0392b" id="req-m-semsaldo">0</div>
-        </div>
-        <div style="background:#f0f0ea;border-radius:8px;padding:12px;text-align:center">
-          <div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Ignorados</div>
-          <div style="font-size:22px;font-weight:600;color:#888" id="req-m-ignorados">0</div>
-        </div>
+        <div style="background:#f8f8f5;border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:#888;margin-bottom:4px">Cruzados</div><div style="font-size:22px;font-weight:600" id="req-m-cruzados">0</div></div>
+        <div style="background:#fff8e1;border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:#b8860b;margin-bottom:4px">Sugestões</div><div style="font-size:22px;font-weight:600;color:#b8860b" id="req-m-sugestoes">0</div></div>
+        <div style="background:#fde8e8;border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:#c0392b;margin-bottom:4px">Sem saldo</div><div style="font-size:22px;font-weight:600;color:#c0392b" id="req-m-semsaldo">0</div></div>
+        <div style="background:#f0f0ea;border-radius:8px;padding:12px;text-align:center"><div style="font-size:11px;color:#888;margin-bottom:4px">Ignorados</div><div style="font-size:22px;font-weight:600;color:#888" id="req-m-ignorados">0</div></div>
       </div>
-
-      <!-- Filtros -->
       <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
         <input type="text" id="req-filtro-busca" placeholder="Buscar produto..." oninput="renderTabelaReq()" style="flex:1;min-width:160px">
-        <select id="req-filtro-cat" onchange="renderTabelaReq()" style="max-width:200px">
-          <option value="">Todas categorias</option>
-        </select>
+        <select id="req-filtro-cat" onchange="renderTabelaReq()" style="max-width:200px"><option value="">Todas categorias</option></select>
         <select id="req-filtro-status" onchange="renderTabelaReq()" style="max-width:180px">
           <option value="">Todos</option>
           <option value="enviar">Sugestão de envio</option>
@@ -1135,31 +1105,25 @@ tr:hover td{background:#fafaf7}
           Selecionar todos com sugestão
         </label>
       </div>
-
-      <!-- Tabela -->
       <div style="overflow-x:auto">
         <table>
-          <thead>
-            <tr>
-              <th style="width:32px"></th>
-              <th>Cód.</th>
-              <th>Produto</th>
-              <th>Categoria</th>
-              <th style="text-align:center">Qtde loja</th>
-              <th style="text-align:center">Mínimo</th>
-              <th style="text-align:center">Saldo central</th>
-              <th style="text-align:center">Lote máx.</th>
-              <th style="text-align:center">Qtde a enviar</th>
-              <th>Status</th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th style="width:32px"></th>
+            <th>Cód.</th><th>Produto</th><th>Categoria</th>
+            <th style="text-align:center">Qtde loja</th>
+            <th style="text-align:center">Mínimo</th>
+            <th style="text-align:center">Saldo central</th>
+            <th style="text-align:center">Lote máx.</th>
+            <th style="text-align:center">Qtde envio (un)</th>
+            <th style="text-align:center">Caixas</th>
+            <th>Status</th>
+          </tr></thead>
           <tbody id="req-tabela"></tbody>
         </table>
         <div id="req-tabela-empty" style="display:none;color:#bbb;padding:20px;text-align:center;font-size:13px">Nenhum item encontrado.</div>
       </div>
     </div>
 
-    <!-- PASSO 3: Confirmar -->
     <div class="card" id="req-confirmar-card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
         <div style="width:24px;height:24px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">3</div>
@@ -1168,8 +1132,8 @@ tr:hover td{background:#fafaf7}
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
         <div style="font-size:13px;color:#555" id="req-resumo-texto">Nenhum item selecionado.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn" onclick="exportarReqCSV()">↓ Exportar lista (.csv)</button>
-          <button class="btn btn-dark" onclick="finalizarRequisicao()">✓ Finalizar requisição</button>
+          <button class="btn" onclick="exportarReqCSV()">↓ Exportar CSV</button>
+          <button class="btn btn-dark" onclick="imprimirRequisicaoPDF()">⎙ Gerar PDF</button>
           <button class="btn btn-sm" onclick="limparRequisicao()" style="color:#c0392b;border-color:#fde8e8">✕ Cancelar</button>
         </div>
       </div>
@@ -2721,9 +2685,16 @@ function renderDashboard(){
   const venc=disp.filter(e=>calcStatus(e.data_validade)==='VENCIDO').length;
   const crit=disp.filter(e=>calcStatus(e.data_validade)==='CRITICO').length;
   const totalUnid=disp.reduce((s,e)=>s+e.quantidade_atual,0);
+  // Saldo por câmara
+  const camaras={};
+  disp.forEach(e=>{const c=e.local||'Sem local';if(!camaras[c])camaras[c]={cx:0,un:0};camaras[c].cx++;camaras[c].un+=e.quantidade_atual;});
+  const camarasHtml=Object.entries(camaras).sort((a,b)=>a[0].localeCompare(b[0])).map(([c,v])=>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0ea;font-size:12px">
+      <span style="color:#555">${c}</span><span><strong>${v.cx}</strong> cx · <strong>${v.un}</strong> un</span></div>`
+  ).join('');
   document.getElementById('metrics-cards').innerHTML=`
     <div class="metric"><div class="metric-lbl">Caixas em estoque</div><div class="metric-val">${disp.length}</div><div class="metric-sub">${totalUnid} unidades</div></div>
-    <div class="metric"><div class="metric-lbl">Saídas registradas</div><div class="metric-val">${movs.filter(m=>m.tipo.startsWith('SAÍDA')).length}</div><div class="metric-sub">${movs.filter(m=>m.tipo==='ENTRADA').length} entradas</div></div>
+    <div class="metric"><div class="metric-lbl">Por câmara</div><div style="margin-top:6px">${camarasHtml||'<span style="color:#bbb;font-size:12px">Sem dados</span>'}</div></div>
     <div class="metric"><div class="metric-lbl">Críticos (${cfgValidade.critico} dias)</div><div class="metric-val" style="color:${crit>0?'#b8860b':'inherit'}">${crit}</div><div class="metric-sub">caixas</div></div>
     <div class="metric"><div class="metric-lbl">Vencidos</div><div class="metric-val" style="color:${venc>0?'#c0392b':'inherit'}">${venc}</div><div class="metric-sub">requer ação</div></div>`;
   // Por categoria
@@ -2751,27 +2722,25 @@ function renderDashboard(){
   renderTabela();
 }
 
-// Consolida saldo por produto — inclui todos os cadastrados, mesmo zerados
 function getSaldoProdutos(){
   const disp = embalagens.filter(e => e.status === 'disponivel');
-
-  // Monta mapa produto_id → saldo
+  const mapProd = {};
+  produtos.forEach(p => { mapProd[String(p.codigo)] = p; });
   const map = {};
   disp.forEach(e => {
     const k = String(e.produto_id);
+    const prodAtual = mapProd[k];
+    const descricao = prodAtual ? prodAtual.descricao : e.produto_descricao;
+    const categoria = prodAtual ? prodAtual.categoria : e.categoria;
     if (!map[k]) map[k] = {
-      produto_id: e.produto_id,
-      descricao: e.produto_descricao,
-      categoria: e.categoria,
-      cxCompletas: 0, unCompletas: 0,
-      cxParciais: 0,  unParciais: 0,
-      validadeMaisProxima: null,
-      piorStatus: 'OK'
+      produto_id: e.produto_id, descricao, categoria,
+      ativo: prodAtual ? prodAtual.ativo !== false : true,
+      cxCompletas: 0, unCompletas: 0, cxParciais: 0, unParciais: 0,
+      validadeMaisProxima: null, piorStatus: 'OK'
     };
     const m = map[k];
     if (e.avulso) { m.cxParciais++; m.unParciais += e.quantidade_atual; }
     else           { m.cxCompletas++; m.unCompletas += e.quantidade_atual; }
-    // Validade mais próxima
     if (e.data_validade) {
       if (!m.validadeMaisProxima || e.data_validade < m.validadeMaisProxima)
         m.validadeMaisProxima = e.data_validade;
@@ -2780,21 +2749,16 @@ function getSaldoProdutos(){
     const st = calcStatus(e.data_validade);
     if (rank[st] > rank[m.piorStatus]) m.piorStatus = st;
   });
-
-  // Adiciona todos os produtos cadastrados que ainda não estão no mapa
   produtos.forEach(p => {
     const k = String(p.codigo);
     if (!map[k]) map[k] = {
-      produto_id: p.codigo,
-      descricao: p.descricao,
-      categoria: p.categoria,
-      cxCompletas: 0, unCompletas: 0,
-      cxParciais: 0,  unParciais: 0,
-      validadeMaisProxima: null,
-      piorStatus: 'ZERO'
+      produto_id: p.codigo, descricao: p.descricao, categoria: p.categoria,
+      ativo: p.ativo !== false,
+      cxCompletas: 0, unCompletas: 0, cxParciais: 0, unParciais: 0,
+      validadeMaisProxima: null, piorStatus: 'ZERO'
     };
+    else map[k].ativo = p.ativo !== false;
   });
-
   return Object.values(map).sort((a,b) =>
     a.categoria.localeCompare(b.categoria) || a.descricao.localeCompare(b.descricao)
   );
@@ -2804,53 +2768,48 @@ function renderTabela(){
   const busca  = (document.getElementById('filtro-busca').value || '').toLowerCase();
   const cat    = document.getElementById('filtro-cat').value;
   const st     = document.getElementById('filtro-status').value;
-
+  const ativo  = document.getElementById('filtro-ativo')?.value ?? 'ativos';
   const stMap = {
-    VENCIDO: ['badge-danger','Vencido'],
-    CRITICO: ['badge-danger','Crítico'],
-    ATENCAO: ['badge-warn','Atenção'],
-    OK:      ['badge-ok','OK'],
-    ZERO:    ['badge-gray','Sem estoque']
+    VENCIDO:['badge-danger','Vencido'], CRITICO:['badge-danger','Crítico'],
+    ATENCAO:['badge-warn','Atenção'], OK:['badge-ok','OK'], ZERO:['badge-gray','Sem estoque']
   };
-
   let rows = getSaldoProdutos().filter(r => {
-    if (busca && !r.descricao.toLowerCase().includes(busca)) return false;
-    if (cat   && r.categoria !== cat) return false;
+    if (busca && !r.descricao.toLowerCase().includes(busca) && !String(r.produto_id).includes(busca)) return false;
+    if (cat && r.categoria !== cat) return false;
     if (st) {
-      if (st === 'ZERO' && r.piorStatus !== 'ZERO') return false;
-      if (st !== 'ZERO' && r.piorStatus !== st)     return false;
+      if (st==='ZERO' && r.piorStatus!=='ZERO') return false;
+      if (st!=='ZERO' && r.piorStatus!==st)     return false;
     }
+    if (ativo==='ativos'   && !r.ativo) return false;
+    if (ativo==='inativos' &&  r.ativo) return false;
     return true;
   });
-
-  const empty  = document.getElementById('tabela-empty');
-  const tbody  = document.getElementById('tabela-lotes');
-  if (!rows.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  const empty = document.getElementById('tabela-empty');
+  const tbody = document.getElementById('tabela-lotes');
+  if (!rows.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
   empty.style.display = 'none';
-
-  const total  = rows.reduce((s,r) => s + r.unCompletas + r.unParciais, 0);
-
+  const total = rows.reduce((s,r) => s+r.unCompletas+r.unParciais, 0);
   tbody.innerHTML = rows.map(r => {
     const totalUn = r.unCompletas + r.unParciais;
-    const [cls, lbl] = stMap[r.piorStatus] || ['badge-gray','—'];
-    const zero = r.piorStatus === 'ZERO';
-    return `<tr style="${zero ? 'opacity:.55' : ''}">
-      <td style="font-size:12px${zero ? ';color:#888' : ''}">${r.descricao}</td>
+    const [cls,lbl] = stMap[r.piorStatus] || ['badge-gray','—'];
+    const zero = r.piorStatus==='ZERO';
+    const inativo = !r.ativo;
+    return `<tr style="${zero||inativo?'opacity:.5':''}">
+      <td style="font-family:monospace;font-size:11px;color:#888">${r.produto_id}</td>
+      <td style="font-size:12px${zero||inativo?';color:#888':''}">
+        ${r.descricao}${inativo?'<span style="background:#fde8e8;color:#c0392b;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px">Inativo</span>':''}
+      </td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
-      <td style="text-align:center${r.cxCompletas ? ';color:#1e7e34;font-weight:600' : ';color:#bbb'}">${r.cxCompletas || '—'}</td>
-      <td style="text-align:center${r.cxParciais  ? ';color:#b8860b;font-weight:600' : ';color:#bbb'}">${r.cxParciais  || '—'}</td>
-      <td style="text-align:center;font-weight:700;font-size:14px${zero?';color:#ccc':''}">${totalUn || '0'}</td>
-      <td style="font-size:12px">${r.validadeMaisProxima ? fmtDate(r.validadeMaisProxima) : '—'}</td>
+      <td style="text-align:center${r.cxCompletas?';color:#1e7e34;font-weight:600':';color:#bbb'}">${r.cxCompletas||'—'}</td>
+      <td style="text-align:center${r.cxParciais?';color:#b8860b;font-weight:600':';color:#bbb'}">${r.cxParciais||'—'}</td>
+      <td style="text-align:center;font-weight:700;font-size:14px${zero||inativo?';color:#ccc':''}">${totalUn||'0'}</td>
+      <td style="font-size:12px">${r.validadeMaisProxima?fmtDate(r.validadeMaisProxima):'—'}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
     </tr>`;
   }).join('');
-
-  // Rodapé totalizador
   tbody.innerHTML += `<tr style="border-top:2px solid #1a1a18;font-weight:700;background:#f8f8f5">
-    <td colspan="4" style="font-size:12px">Total — ${rows.length} produtos listados</td>
-    <td style="text-align:center;font-size:15px">${total}</td>
-    <td colspan="2"></td>
-  </tr>`;
+    <td colspan="5" style="font-size:12px">Total — ${rows.length} produtos listados</td>
+    <td style="text-align:center;font-size:15px">${total}</td><td colspan="2"></td></tr>`;
 }
 
 // ── Exportar CSV ──────────────────────────────────────────────────────
@@ -3045,13 +3004,14 @@ function gerarRelatorioDetalhado(embs){
         <div style="font-size:12px;color:#888">${new Date().toLocaleString('pt-BR')}</div>
       </div>
       <table style="font-size:12px">
-        <thead><tr><th>Produto</th><th>Categoria</th><th>Lote</th><th>Tipo</th><th>Qtd (un)</th><th>Produção</th><th>Validade</th><th>Semana</th><th>Local</th><th>Status</th></tr></thead>
+        <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Lote</th><th>Tipo</th><th>Qtd (un)</th><th>Produção</th><th>Validade</th><th>Semana</th><th>Local</th><th>Status</th></tr></thead>
         <tbody>${embs.map(e=>{
           const s=calcStatus(e.data_validade);const[cls,lbl]=stMap[s];
           const tipo=e.avulso
             ?'<span style="background:#fff8e1;color:#b8860b;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600">Parcial</span>'
             :'<span style="background:#e6f4ea;color:#1e7e34;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600">Completa</span>';
           return`<tr>
+            <td style="font-family:monospace;font-size:11px;color:#888">${e.produto_id}</td>
             <td style="font-size:11px">${e.produto_descricao}</td>
             <td style="color:#888;font-size:11px">${e.categoria}</td>
             <td style="font-family:monospace;font-size:10px">${e.codigo}</td>
@@ -3069,17 +3029,16 @@ function gerarRelatorioDetalhado(embs){
 }
 
 function gerarRelatorioResumo(embs){
-  // Agrupa por produto_id
+  const mapProd={};produtos.forEach(p=>{mapProd[String(p.codigo)]=p;});
   const map={};
   embs.forEach(e=>{
     const k=String(e.produto_id);
+    const p=mapProd[k];
     if(!map[k]) map[k]={
       produto_id:e.produto_id,
-      descricao:e.produto_descricao,
-      categoria:e.categoria,
-      cxCompletas:0, cxParciais:0,
-      unCompletas:0, unParciais:0,
-      piorStatus:'OK'
+      descricao:p?p.descricao:e.produto_descricao,
+      categoria:p?p.categoria:e.categoria,
+      cxCompletas:0,cxParciais:0,unCompletas:0,unParciais:0,piorStatus:'OK'
     };
     const m=map[k];
     if(e.avulso){m.cxParciais++;m.unParciais+=e.quantidade_atual;}
@@ -3088,13 +3047,11 @@ function gerarRelatorioResumo(embs){
     const st=calcStatus(e.data_validade);
     if(rank[st]>rank[m.piorStatus]) m.piorStatus=st;
   });
-
   const rows=Object.values(map).sort((a,b)=>a.categoria.localeCompare(b.categoria)||a.descricao.localeCompare(b.descricao));
   const stMap={VENCIDO:['badge-danger','Vencido'],CRITICO:['badge-danger','Crítico'],ATENCAO:['badge-warn','Atenção'],OK:['badge-ok','OK']};
   const totalCxC=rows.reduce((s,r)=>s+r.cxCompletas,0);
   const totalCxP=rows.reduce((s,r)=>s+r.cxParciais,0);
   const totalUn=rows.reduce((s,r)=>s+r.unCompletas+r.unParciais,0);
-
   document.getElementById('rel-resultado').innerHTML=`
     <div class="card" style="margin-top:0">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -3106,16 +3063,15 @@ function gerarRelatorioResumo(embs){
       </div>
       <table style="font-size:12px">
         <thead><tr>
-          <th>Produto</th><th>Categoria</th>
+          <th>Código</th><th>Produto</th><th>Categoria</th>
           <th style="text-align:center">Cx completas</th><th style="text-align:center">Un completas</th>
           <th style="text-align:center">Cx parciais</th><th style="text-align:center">Un parciais</th>
-          <th style="text-align:center;font-weight:700">Total un</th>
-          <th>Status</th>
+          <th style="text-align:center;font-weight:700">Total un</th><th>Status</th>
         </tr></thead>
         <tbody>${rows.map(r=>{
-          const[cls,lbl]=stMap[r.piorStatus];
-          const total=r.unCompletas+r.unParciais;
+          const[cls,lbl]=stMap[r.piorStatus];const total=r.unCompletas+r.unParciais;
           return`<tr>
+            <td style="font-family:monospace;font-size:11px;color:#888">${r.produto_id}</td>
             <td style="font-size:11px">${r.descricao}</td>
             <td style="color:#888;font-size:11px">${r.categoria}</td>
             <td style="text-align:center">${r.cxCompletas||'—'}</td>
@@ -3636,8 +3592,7 @@ function initConfig(){
   previewStatus();
   renderListaResponsaveis();
   document.getElementById('backup-feedback').style.display='none';
-  // Configuração da requisição
-  if(!cfgRequisicao || !Object.keys(cfgRequisicao).length) cfgRequisicao = getReqCfgDefault();
+  if(!cfgRequisicao||!Object.keys(cfgRequisicao).length) cfgRequisicao=getReqCfgDefault();
   setReqCfgLoja(reqCfgLojaAtiva);
 }
 
@@ -3992,408 +3947,389 @@ function resetarConfigValidade(){
 
 // =====================================================================
 // =====================================================================
-// CONFIGURAÇÃO DA REQUISIÇÃO DE LOJAS
+// CONFIGURAÇÃO DA REQUISIÇÃO
 // =====================================================================
-const REQ_CFG_KEY = 'estoque_pa_req_cfg_v1';
-const LOJAS_REQ = ['Cambuí','Barão Geraldo','Indaiatuba'];
-let reqCfgLojaAtiva = 'Cambuí';
-// Estrutura: { 'Cambuí': { 'Ganho de Massa 300g': {minimo:24, loteMax:32}, ... }, ... }
-let cfgRequisicao = {};
+const REQ_CFG_KEY='estoque_pa_req_cfg_v1';
+const LOJAS_REQ=['Cambuí','Barão Geraldo','Indaiatuba'];
+let reqCfgLojaAtiva='Cambuí';
+let cfgRequisicao={};
+
+const REQ_BTN_IDS={'Cambuí':'req-cfg-btn-cambui','Barão Geraldo':'req-cfg-btn-barao','Indaiatuba':'req-cfg-btn-indaiatuba'};
+const REQ_LOJA_BTN_IDS={'Cambuí':'req-btn-cambui','Barão Geraldo':'req-btn-barao','Indaiatuba':'req-btn-indaiatuba'};
 
 function getReqCfgDefault(){
-  const cfg = {};
-  LOJAS_REQ.forEach(loja => {
-    cfg[loja] = {};
-    todasCategorias().forEach(cat => {
-      cfg[loja][cat] = {minimo: 16, loteMax: 32};
-    });
+  const cfg={};
+  LOJAS_REQ.forEach(loja=>{
+    cfg[loja]={};
+    todasCategorias().forEach(cat=>{ cfg[loja][cat]={minimo:16,loteMax:32}; });
   });
   return cfg;
 }
 
 async function carregarReqCfg(){
   try{
-    const res = await fetch('/api/data/' + REQ_CFG_KEY);
-    const json = await res.json();
-    if(json.value) cfgRequisicao = json.value;
-    else cfgRequisicao = getReqCfgDefault();
-  }catch(e){ cfgRequisicao = getReqCfgDefault(); }
+    const res=await fetch('/api/data/'+REQ_CFG_KEY);
+    const json=await res.json();
+    cfgRequisicao=json.value||getReqCfgDefault();
+  }catch(e){ cfgRequisicao=getReqCfgDefault(); }
 }
 
 async function salvarReqCfg(){
-  // Lê valores da tabela antes de salvar
-  const tbody = document.getElementById('req-cfg-tabela');
-  if(tbody){
-    tbody.querySelectorAll('tr').forEach(tr => {
-      const cat = tr.dataset.cat;
-      if(!cat) return;
-      if(!cfgRequisicao[reqCfgLojaAtiva]) cfgRequisicao[reqCfgLojaAtiva] = {};
-      const inputs = tr.querySelectorAll('input[type=number]');
-      if(inputs[0]) cfgRequisicao[reqCfgLojaAtiva][cat] = {
-        minimo:  parseInt(inputs[0].value)||0,
-        loteMax: parseInt(inputs[1].value)||16
-      };
-    });
-  }
+  // Lê valores da tabela
+  document.getElementById('req-cfg-tabela')?.querySelectorAll('tr').forEach(tr=>{
+    const cat=tr.dataset.cat; if(!cat)return;
+    if(!cfgRequisicao[reqCfgLojaAtiva]) cfgRequisicao[reqCfgLojaAtiva]={};
+    const inputs=tr.querySelectorAll('input[type=number]');
+    if(inputs[0]) cfgRequisicao[reqCfgLojaAtiva][cat]={minimo:parseInt(inputs[0].value)||0,loteMax:parseInt(inputs[1].value)||16};
+  });
   try{
-    await fetch('/api/data/' + REQ_CFG_KEY, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({value: cfgRequisicao})
-    });
-    toast('Configurações da requisição salvas');
-  }catch(e){ toast('Erro ao salvar'); }
+    await fetch('/api/data/'+REQ_CFG_KEY,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:cfgRequisicao})});
+    toast('Configurações salvas');
+  }catch(e){toast('Erro ao salvar');}
 }
 
 function resetarReqCfg(){
-  if(!confirm('Restaurar valores padrão para '+reqCfgLojaAtiva+'?')) return;
-  cfgRequisicao[reqCfgLojaAtiva] = {};
-  todasCategorias().forEach(cat => {
-    cfgRequisicao[reqCfgLojaAtiva][cat] = {minimo:16, loteMax:32};
-  });
+  if(!confirm('Restaurar padrão para '+reqCfgLojaAtiva+'?'))return;
+  cfgRequisicao[reqCfgLojaAtiva]={};
+  todasCategorias().forEach(cat=>{cfgRequisicao[reqCfgLojaAtiva][cat]={minimo:16,loteMax:32};});
   renderReqCfgTabela();
 }
 
 function setReqCfgLoja(loja){
-  reqCfgLojaAtiva = loja;
-  LOJAS_REQ.forEach(l => {
-    const btn = document.getElementById('req-cfg-btn-'+l.toLowerCase().replace(/\s/g,'-').replace(/ã/g,'a'));
-    if(btn){
-      btn.style.background = l===loja ? '#1a1a18' : '#fff';
-      btn.style.color = l===loja ? '#fff' : '#555';
-      btn.style.borderColor = l===loja ? '#1a1a18' : '#ddd';
-    }
+  reqCfgLojaAtiva=loja;
+  // Atualiza visual dos botões — FIX #1: cor muda corretamente
+  Object.entries(REQ_BTN_IDS).forEach(([l,id])=>{
+    const btn=document.getElementById(id); if(!btn)return;
+    const sel=l===loja;
+    btn.style.background=sel?'#1a1a18':'#fff';
+    btn.style.color=sel?'#fff':'#555';
+    btn.style.borderColor=sel?'#1a1a18':'#ddd';
   });
   renderReqCfgTabela();
 }
 
 function renderReqCfgTabela(){
-  const tbody = document.getElementById('req-cfg-tabela');
-  if(!tbody) return;
-  const cfgLoja = cfgRequisicao[reqCfgLojaAtiva] || {};
-  tbody.innerHTML = todasCategorias().map(cat => {
-    const v = cfgLoja[cat] || {minimo:16, loteMax:32};
-    return `<tr data-cat="${cat}">
-      <td style="padding:7px 10px 7px 0;font-size:13px;color:#333">${cat}</td>
-      <td style="padding:7px 10px;text-align:center">
-        <input type="number" min="0" value="${v.minimo}" style="width:80px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center">
-      </td>
-      <td style="padding:7px 0 7px 10px;text-align:center">
-        <input type="number" min="0" value="${v.loteMax}" style="width:80px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center">
-      </td>
+  const tbody=document.getElementById('req-cfg-tabela'); if(!tbody)return;
+  const cfgLoja=cfgRequisicao[reqCfgLojaAtiva]||{};
+  tbody.innerHTML=todasCategorias().map(cat=>{
+    const v=cfgLoja[cat]||{minimo:16,loteMax:32};
+    return`<tr data-cat="${cat}">
+      <td style="padding:7px 10px 7px 0;font-size:13px">${cat}</td>
+      <td style="padding:7px 10px;text-align:center"><input type="number" min="0" value="${v.minimo}" style="width:80px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center"></td>
+      <td style="padding:7px 0 7px 10px;text-align:center"><input type="number" min="0" value="${v.loteMax}" style="width:80px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center"></td>
     </tr>`;
   }).join('');
 }
 
-// Botões de loja na config têm IDs com slug
-// Cambuí → req-cfg-btn-cambui
-// Barão Geraldo → req-cfg-btn-barao-geraldo → vamos simplificar:
-function getReqCfgBtnId(loja){
-  return 'req-cfg-btn-' + {
-    'Cambuí':'cambui',
-    'Barão Geraldo':'barao',
-    'Indaiatuba':'indaiatuba'
-  }[loja];
-}
-
 // =====================================================================
-// TELA REQUISIÇÃO DE LOJAS — stateless, sem persistência
+// TELA REQUISIÇÃO — stateless, sem persistência
 // =====================================================================
-let reqLojaAtiva = 'Cambuí';
-let reqItens = []; // itens cruzados
+let reqLojaAtiva='Cambuí';
+let reqItens=[];
 
 function initRequisicao(){
-  // Nada a carregar — tela limpa sempre
+  // Tela sempre limpa ao abrir
 }
 
 function selecionarLojaReq(loja){
-  // Se já tem dados carregados, confirma troca
-  if(reqItens.length > 0 && !confirm('Trocar de loja limpará os dados carregados. Continuar?')) return;
-  reqLojaAtiva = loja;
+  if(reqItens.length>0&&!confirm('Trocar de loja limpará os dados. Continuar?'))return;
+  reqLojaAtiva=loja;
   limparRequisicao();
-  ['Cambuí','Barão Geraldo','Indaiatuba'].forEach(l => {
-    const id = 'req-btn-'+{Cambuí:'cambui','Barão Geraldo':'barao',Indaiatuba:'indaiatuba'}[l];
-    const btn = document.getElementById(id);
-    if(!btn) return;
-    btn.style.background = l===loja ? '#1a1a18' : '#fff';
-    btn.style.color = l===loja ? '#fff' : '#555';
-    btn.style.borderColor = l===loja ? '#1a1a18' : '#ddd';
+  Object.entries(REQ_LOJA_BTN_IDS).forEach(([l,id])=>{
+    const btn=document.getElementById(id);if(!btn)return;
+    const sel=l===loja;
+    btn.style.background=sel?'#1a1a18':'#fff';
+    btn.style.color=sel?'#fff':'#555';
+    btn.style.borderColor=sel?'#1a1a18':'#ddd';
   });
 }
 
 async function processarArquivoReq(file){
-  if(!file) return;
-  const status = document.getElementById('req-upload-status');
-  status.style.display = 'block';
-  status.innerHTML = '<div style="color:#888;font-size:13px;padding:8px 0">Lendo arquivo...</div>';
-
+  if(!file)return;
+  const status=document.getElementById('req-upload-status');
+  status.style.display='block';
+  status.innerHTML='<div style="color:#888;font-size:13px;padding:8px 0">Lendo arquivo...</div>';
   try{
-    const buf = await file.arrayBuffer();
-    // Usa SheetJS se disponível
-    if(typeof XLSX === 'undefined'){
-      status.innerHTML = '<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Biblioteca Excel não carregada. Recarregue a página e tente novamente.</div>';
+    if(typeof XLSX==='undefined'){
+      status.innerHTML='<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Biblioteca XLSX não carregada. Recarregue a página.</div>';
       return;
     }
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 
-    const wb = XLSX.read(buf, {type:'array'});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
-
-    // Formato esperado: col D (índice 3) = código, col H (índice 7) = quantidade
-    // Cabeçalho na linha 6 (índice 5), dados a partir da linha 7 (índice 6)
-    // Linhas de GRUPO são identificadas pela coluna A começando com 'GRUPO:'
-    const estoqueLoja = {}; // cod → qtde
-    let linhaDados = 0;
-
-    // Encontra linha de cabeçalho
-    for(let i=0; i<rows.length; i++){
-      const r = rows[i];
-      if(r[0] && String(r[0]).includes('ID') && r[3] && String(r[3]).includes('Cód')) {
-        linhaDados = i+1; break;
-      }
-      // Fallback: procura por linha que tem 'Cód. barras' ou similar
-      if(r[3] && String(r[3]).toLowerCase().includes('cód')) {
-        linhaDados = i+1; break;
-      }
+    // Encontra linha de cabeçalho (procura linha com 'Cód' na col D)
+    let linhaDados=6;
+    for(let i=0;i<rows.length;i++){
+      if(rows[i][3]&&String(rows[i][3]).toLowerCase().includes('cód')){linhaDados=i+1;break;}
     }
-    if(!linhaDados) linhaDados = 6; // padrão baseado na análise do arquivo
 
-    for(let i=linhaDados; i<rows.length; i++){
-      const r = rows[i];
-      // Pula linhas de grupo e linhas vazias
-      if(!r[0]) continue;
-      if(String(r[0]).startsWith('GRUPO')) continue;
-      const codRaw = r[3];
-      const qtdeRaw = r[7];
-      if(!codRaw && codRaw !== 0) continue;
+    const estoqueLoja={};
+    for(let i=linhaDados;i<rows.length;i++){
+      const r=rows[i];
+      if(!r[0])continue;
+      if(String(r[0]).startsWith('GRUPO'))continue;
+      const codRaw=r[3]; const qtdeRaw=r[7];
+      if(codRaw===''||codRaw===null||codRaw===undefined)continue;
       try{
-        const cod = String(parseInt(float_parse(codRaw)));
-        const qtde = parseFloat(qtdeRaw) || 0;
-        if(cod && cod !== 'NaN') estoqueLoja[cod] = (estoqueLoja[cod]||0) + qtde;
+        const cod=String(Math.round(parseFloat(String(codRaw).replace(',','.'))));
+        const qtde=parseFloat(String(qtdeRaw).replace(',','.'))||0;
+        if(cod&&cod!=='NaN') estoqueLoja[cod]=(estoqueLoja[cod]||0)+qtde;
       }catch(e){}
     }
 
-    const totalLidos = Object.keys(estoqueLoja).length;
+    const totalLidos=Object.keys(estoqueLoja).length;
     if(!totalLidos){
-      status.innerHTML = '<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Nenhum produto encontrado. Verifique o formato do arquivo — coluna D: código · coluna H: quantidade.</div>';
+      status.innerHTML='<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Nenhum produto encontrado. Verifique o arquivo.</div>';
       return;
     }
-
-    status.innerHTML = `<div style="background:#e6f4ea;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e7e34">✓ ${totalLidos} produtos lidos do arquivo</div>`;
-
-    // Cruza com estoque central
-    cruzarEstoques(estoqueLoja, file.name);
-
+    status.innerHTML=`<div style="background:#e6f4ea;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e7e34">✓ ${totalLidos} produtos lidos do arquivo</div>`;
+    cruzarEstoques(estoqueLoja,file.name);
   }catch(err){
-    status.innerHTML = `<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Erro ao ler arquivo: ${err.message}</div>`;
-    console.error(err);
+    status.innerHTML=`<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Erro: ${err.message}</div>`;
   }
 }
 
-function float_parse(v){
-  if(typeof v === 'number') return v;
-  return parseFloat(String(v).replace(',','.'));
-}
+function cruzarEstoques(estoqueLoja,nomeArquivo){
+  const saldoCentral=getSaldoProdutos();
+  const mapCentral={};
+  saldoCentral.forEach(r=>{mapCentral[String(r.produto_id)]=r;});
+  // Mapa de unid_cx por produto
+  const mapProd={};
+  produtos.forEach(p=>{mapProd[String(p.codigo)]=p;});
 
-function cruzarEstoques(estoqueLoja, nomeArquivo){
-  const saldoCentral = getSaldoProdutos(); // array com saldo atual
-  const mapCentral = {};
-  saldoCentral.forEach(r => { mapCentral[String(r.produto_id)] = r; });
+  if(!cfgRequisicao||!cfgRequisicao[reqLojaAtiva]) cfgRequisicao=getReqCfgDefault();
+  const cfgLoja=cfgRequisicao[reqLojaAtiva]||{};
 
-  const cfgLoja = cfgRequisicao[reqLojaAtiva] || {};
+  reqItens=[];
+  let cruzados=0,sugestoes=0,semSaldo=0,ignorados=0;
 
-  reqItens = [];
-  let cruzados=0, sugestoes=0, semSaldo=0, ignorados=0;
-
-  Object.entries(estoqueLoja).forEach(([cod, qtdeLoja])=>{
-    const central = mapCentral[cod];
-    if(!central){ ignorados++; return; } // não cadastrado no central
+  Object.entries(estoqueLoja).forEach(([cod,qtdeLoja])=>{
+    const central=mapCentral[cod];
+    if(!central){ignorados++;return;}
     cruzados++;
-
-    const cat = central.categoria;
-    const cfg = cfgLoja[cat] || {minimo:16, loteMax:32};
-    const saldoCx = central.cxCompletas + central.cxParciais;
-    const saldoUn = central.unCompletas + central.unParciais;
-    const precisaEnvio = qtdeLoja < cfg.minimo;
-    const temSaldo = saldoUn > 0;
-
-    let statusReq, sugestaoQtd;
-    if(!temSaldo){
-      statusReq = 'zero';
-      sugestaoQtd = 0;
-      semSaldo++;
-    } else if(precisaEnvio){
-      statusReq = 'enviar';
-      sugestaoQtd = Math.min(cfg.loteMax, saldoUn);
-      sugestoes++;
-    } else {
-      statusReq = 'ok';
-      sugestaoQtd = 0;
-    }
-
+    const cat=central.categoria;
+    const cfg=cfgLoja[cat]||{minimo:16,loteMax:32};
+    const saldoUn=central.unCompletas+central.unParciais;
+    const unidCx=mapProd[cod]?.unid_cx||16;
+    const precisaEnvio=qtdeLoja<cfg.minimo;
+    const temSaldo=saldoUn>0;
+    let statusReq,sugestaoQtd;
+    if(!temSaldo){statusReq='zero';sugestaoQtd=0;semSaldo++;}
+    else if(precisaEnvio){statusReq='enviar';sugestaoQtd=Math.min(cfg.loteMax,saldoUn);sugestoes++;}
+    else{statusReq='ok';sugestaoQtd=0;}
     reqItens.push({
-      cod,
-      descricao: central.descricao,
-      categoria: cat,
-      qtdeLoja,
-      minimo: cfg.minimo,
-      saldoUn,
-      loteMax: cfg.loteMax,
-      sugestaoQtd,
-      qtdEnviar: statusReq === 'enviar' ? sugestaoQtd : 0,
-      selecionado: statusReq === 'enviar',
-      status: statusReq
+      cod,descricao:central.descricao,categoria:cat,
+      qtdeLoja,minimo:cfg.minimo,saldoUn,loteMax:cfg.loteMax,
+      sugestaoQtd,qtdEnviar:statusReq==='enviar'?sugestaoQtd:0,
+      selecionado:statusReq==='enviar',status:statusReq,unidCx
     });
   });
 
-  // Totais
-  document.getElementById('req-m-cruzados').textContent = cruzados;
-  document.getElementById('req-m-sugestoes').textContent = sugestoes;
-  document.getElementById('req-m-semsaldo').textContent = semSaldo;
-  document.getElementById('req-m-ignorados').textContent = ignorados;
-  document.getElementById('req-titulo-resultado').textContent = `Resultado — ${reqLojaAtiva} · ${nomeArquivo}`;
-  document.getElementById('req-data-leitura').textContent = new Date().toLocaleString('pt-BR');
+  // FIX #3: ordena por categoria
+  reqItens.sort((a,b)=>a.categoria.localeCompare(b.categoria)||a.descricao.localeCompare(b.descricao));
 
-  // Popular select de categorias
-  const cats = [...new Set(reqItens.map(i=>i.categoria))].sort();
-  const selCat = document.getElementById('req-filtro-cat');
-  selCat.innerHTML = '<option value="">Todas categorias</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('req-m-cruzados').textContent=cruzados;
+  document.getElementById('req-m-sugestoes').textContent=sugestoes;
+  document.getElementById('req-m-semsaldo').textContent=semSaldo;
+  document.getElementById('req-m-ignorados').textContent=ignorados;
+  document.getElementById('req-titulo-resultado').textContent=`Resultado — ${reqLojaAtiva} · ${nomeArquivo}`;
+  document.getElementById('req-data-leitura').textContent=new Date().toLocaleString('pt-BR');
 
-  document.getElementById('req-resultado-area').style.display = 'block';
+  const cats=[...new Set(reqItens.map(i=>i.categoria))].sort();
+  const selCat=document.getElementById('req-filtro-cat');
+  selCat.innerHTML='<option value="">Todas categorias</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  document.getElementById('req-resultado-area').style.display='block';
   renderTabelaReq();
   atualizarResumoReq();
 }
 
 function renderTabelaReq(){
-  const busca = (document.getElementById('req-filtro-busca')?.value||'').toLowerCase();
-  const cat   = document.getElementById('req-filtro-cat')?.value||'';
-  const st    = document.getElementById('req-filtro-status')?.value||'';
+  const busca=(document.getElementById('req-filtro-busca')?.value||'').toLowerCase();
+  const cat=document.getElementById('req-filtro-cat')?.value||'';
+  const st=document.getElementById('req-filtro-status')?.value||'';
 
-  const filtrados = reqItens.filter(r => {
-    if(busca && !r.descricao.toLowerCase().includes(busca) && !r.cod.includes(busca)) return false;
-    if(cat && r.categoria !== cat) return false;
-    if(st && r.status !== st) return false;
+  const filtrados=reqItens.filter(r=>{
+    if(busca&&!r.descricao.toLowerCase().includes(busca)&&!r.cod.includes(busca))return false;
+    if(cat&&r.categoria!==cat)return false;
+    if(st&&r.status!==st)return false;
     return true;
   });
 
-  const tbody = document.getElementById('req-tabela');
-  const empty = document.getElementById('req-tabela-empty');
-
-  if(!filtrados.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  const tbody=document.getElementById('req-tabela');
+  const empty=document.getElementById('req-tabela-empty');
+  if(!filtrados.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
 
-  tbody.innerHTML = filtrados.map((r,fi) => {
-    const idx = reqItens.indexOf(r);
-    const zero = r.status==='zero';
-    const ok   = r.status==='ok';
-    const enviar = r.status==='enviar';
-
-    const badgeHtml = zero
-      ? '<span class="badge badge-danger">Sem saldo</span>'
-      : ok
-        ? '<span class="badge badge-ok">✓ Estoque OK</span>'
-        : '<span class="badge badge-warn">↑ Enviar</span>';
-
-    const checkHtml = zero
-      ? '<input type="checkbox" disabled style="opacity:.3">'
-      : `<input type="checkbox" ${r.selecionado?'checked':''} onchange="toggleReqItem(${idx}, this.checked)">`;
-
-    const qtdHtml = (enviar && !zero)
-      ? `<input type="number" class="ajuste-input" min="1" max="${r.loteMax}" value="${r.qtdEnviar}"
-          onchange="atualizarQtdReq(${idx}, this.value)" style="width:70px;text-align:center">`
-      : '<span style="color:#bbb">—</span>';
-
-    return `<tr style="${zero?'opacity:.5':''}">
-      <td style="text-align:center">${checkHtml}</td>
+  tbody.innerHTML=filtrados.map(r=>{
+    const idx=reqItens.indexOf(r);
+    const zero=r.status==='zero';
+    const enviar=r.status==='enviar';
+    const badge=zero
+      ?'<span class="badge badge-danger">Sem saldo</span>'
+      :r.status==='ok'
+        ?'<span class="badge badge-ok">✓ OK</span>'
+        :'<span class="badge badge-warn">↑ Enviar</span>';
+    const check=zero
+      ?'<input type="checkbox" disabled style="opacity:.3">'
+      :`<input type="checkbox" ${r.selecionado?'checked':''} onchange="toggleReqItem(${idx},this.checked)">`;
+    // FIX #2: mostra caixas = qtdEnviar / unidCx
+    const caixas=enviar&&r.qtdEnviar>0?Math.ceil(r.qtdEnviar/r.unidCx)+' cx':'—';
+    const qtdInput=enviar
+      ?`<input type="number" class="ajuste-input" min="1" max="${r.loteMax}" value="${r.qtdEnviar}"
+          onchange="atualizarQtdReq(${idx},this.value)" style="width:68px;text-align:center">`
+      :'<span style="color:#bbb">—</span>';
+    return`<tr style="${zero?'opacity:.5':''}">
+      <td style="text-align:center">${check}</td>
       <td style="font-family:monospace;font-size:11px;color:#888">${r.cod}</td>
-      <td style="font-size:12px;font-weight:${enviar?'500':'400'}">${r.descricao}</td>
+      <td style="font-size:12px${enviar?';font-weight:500':''}">${r.descricao}</td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
       <td style="text-align:center">${r.qtdeLoja}</td>
       <td style="text-align:center;color:#888">${r.minimo}</td>
-      <td style="text-align:center;font-weight:600;color:${zero?'#c0392b':r.saldoUn>32?'#1e7e34':'inherit'}">${r.saldoUn}</td>
+      <td style="text-align:center;font-weight:600;color:${zero?'#c0392b':r.saldoUn>r.loteMax?'#1e7e34':'inherit'}">${r.saldoUn}</td>
       <td style="text-align:center;color:#888">${r.loteMax}</td>
-      <td style="text-align:center">${qtdHtml}</td>
-      <td>${badgeHtml}</td>
+      <td style="text-align:center">${qtdInput}</td>
+      <td style="text-align:center;font-weight:600;color:#1a56db">${caixas}</td>
+      <td>${badge}</td>
     </tr>`;
   }).join('');
-
   atualizarResumoReq();
 }
 
-function toggleReqItem(idx, checked){
-  if(reqItens[idx].status === 'zero') return;
-  reqItens[idx].selecionado = checked;
-  if(!checked) reqItens[idx].qtdEnviar = 0;
-  else if(reqItens[idx].qtdEnviar === 0) reqItens[idx].qtdEnviar = reqItens[idx].sugestaoQtd;
+function toggleReqItem(idx,checked){
+  if(reqItens[idx].status==='zero')return;
+  reqItens[idx].selecionado=checked;
+  if(!checked)reqItens[idx].qtdEnviar=0;
+  else if(reqItens[idx].qtdEnviar===0)reqItens[idx].qtdEnviar=reqItens[idx].sugestaoQtd;
   atualizarResumoReq();
+  // Atualiza o input sem re-render completo
+  renderTabelaReq();
 }
 
-function atualizarQtdReq(idx, val){
-  const v = parseInt(val)||0;
-  const max = reqItens[idx].loteMax;
-  reqItens[idx].qtdEnviar = Math.min(Math.max(v, 0), max);
+function atualizarQtdReq(idx,val){
+  const v=parseInt(val)||0;
+  reqItens[idx].qtdEnviar=Math.min(Math.max(v,0),reqItens[idx].loteMax);
   atualizarResumoReq();
 }
 
 function toggleSelecionarTodosReq(checked){
-  reqItens.forEach(r => {
-    if(r.status === 'zero') return;
-    if(r.status === 'enviar'){
-      r.selecionado = checked;
-      if(checked && r.qtdEnviar === 0) r.qtdEnviar = r.sugestaoQtd;
-    }
+  reqItens.forEach(r=>{
+    if(r.status==='zero')return;
+    if(r.status==='enviar'){r.selecionado=checked;if(checked&&r.qtdEnviar===0)r.qtdEnviar=r.sugestaoQtd;}
   });
   renderTabelaReq();
 }
 
 function atualizarResumoReq(){
-  const selecionados = reqItens.filter(r => r.selecionado && r.status !== 'zero');
-  const totalItens = selecionados.length;
-  const totalUn = selecionados.reduce((s,r) => s + (r.qtdEnviar||0), 0);
-  const el = document.getElementById('req-resumo-texto');
-  if(el){
-    el.innerHTML = totalItens > 0
-      ? `<strong>${totalItens} ite${totalItens!==1?'ns':'m'}</strong> selecionado${totalItens!==1?'s':''} · <strong>${totalUn} unidades</strong> a enviar para <strong>${reqLojaAtiva}</strong>`
-      : 'Nenhum item selecionado.';
-  }
+  const sel=reqItens.filter(r=>r.selecionado&&r.status!=='zero');
+  const totalUn=sel.reduce((s,r)=>s+(r.qtdEnviar||0),0);
+  const totalCx=sel.reduce((s,r)=>s+Math.ceil((r.qtdEnviar||0)/r.unidCx),0);
+  const el=document.getElementById('req-resumo-texto');
+  if(el) el.innerHTML=sel.length>0
+    ?`<strong>${sel.length}</strong> item(ns) · <strong>${totalUn} un</strong> · <strong>${totalCx} cx</strong> para <strong>${reqLojaAtiva}</strong>`
+    :'Nenhum item selecionado.';
 }
 
 function exportarReqCSV(){
-  const selecionados = reqItens.filter(r => r.selecionado && r.qtdEnviar > 0);
-  if(!selecionados.length){ toast('Nenhum item selecionado'); return; }
-  const BOM = '\uFEFF';
-  const header = ['Codigo','Produto','Categoria','Qtde Loja','Minimo','Saldo Central','Lote Max','Qtde a Enviar'];
-  const rows = selecionados.map(r => [
-    r.cod, '"'+r.descricao.replace(/"/g,'""')+'"', '"'+r.categoria+'"',
-    r.qtdeLoja, r.minimo, r.saldoUn, r.loteMax, r.qtdEnviar
-  ].join(';'));
-  const csv = BOM + header.join(';') + '\r\n' + rows.join('\r\n');
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url;
-  a.download = 'requisicao_'+reqLojaAtiva.replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('Lista exportada');
+  const sel=reqItens.filter(r=>r.selecionado&&r.qtdEnviar>0);
+  if(!sel.length){toast('Nenhum item selecionado');return;}
+  const BOM='\uFEFF';
+  const hdr=['Codigo','Produto','Categoria','Qtde Loja','Minimo','Saldo Central','Lote Max','Qtde Envio (un)','Caixas'];
+  const rows=sel.map(r=>[r.cod,'"'+r.descricao.replace(/"/g,'""')+'"','"'+r.categoria+'"',r.qtdeLoja,r.minimo,r.saldoUn,r.loteMax,r.qtdEnviar,Math.ceil(r.qtdEnviar/r.unidCx)].join(';'));
+  const blob=new Blob([BOM+hdr.join(';')+'\r\n'+rows.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download='requisicao_'+reqLojaAtiva.replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(url);
+  toast('CSV exportado');
 }
 
-function finalizarRequisicao(){
-  const selecionados = reqItens.filter(r => r.selecionado && r.qtdEnviar > 0);
-  if(!selecionados.length){ toast('Selecione ao menos um item'); return; }
-  const total = selecionados.reduce((s,r)=>s+r.qtdEnviar,0);
-  if(!confirm(`Finalizar requisição de ${selecionados.length} itens (${total} unidades) para ${reqLojaAtiva}?`)) return;
-  toast(`✓ Requisição finalizada — ${selecionados.length} itens · ${total} unidades para ${reqLojaAtiva}`);
-  // Limpa tela para próximo usuário
-  setTimeout(()=>limparRequisicao(), 1500);
+// FIX #4: PDF da requisição com cabeçalho, tabela e campo de conferência
+function imprimirRequisicaoPDF(){
+  const sel=reqItens.filter(r=>r.selecionado&&r.qtdEnviar>0);
+  if(!sel.length){toast('Nenhum item selecionado');return;}
+  const agora=new Date().toLocaleString('pt-BR');
+  const totalUn=sel.reduce((s,r)=>s+r.qtdEnviar,0);
+  const totalCx=sel.reduce((s,r)=>s+Math.ceil(r.qtdEnviar/r.unidCx),0);
+
+  const pa=document.getElementById('print-area');
+  pa.innerHTML=`
+  <div style="padding:20px;font-family:Arial,sans-serif;font-size:12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #000">
+      <div>
+        <div style="font-size:18px;font-weight:700">Requisição de Estoque</div>
+        <div style="font-size:14px;font-weight:600;margin-top:4px;color:#333">Loja: ${reqLojaAtiva}</div>
+        <div style="font-size:11px;color:#555;margin-top:4px">Emitido em: ${agora}</div>
+        <div style="font-size:11px;color:#555;margin-top:2px">${sel.length} itens · ${totalUn} unidades · ${totalCx} caixas</div>
+      </div>
+      <div style="font-size:11px;text-align:right;color:#888">
+        Simples e Natural<br>Controle de Estoque Central
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#1a1a18;color:#fff">
+          <th style="padding:7px 8px;text-align:left">#</th>
+          <th style="padding:7px 8px;text-align:left">Código</th>
+          <th style="padding:7px 8px;text-align:left">Produto</th>
+          <th style="padding:7px 8px;text-align:left">Categoria</th>
+          <th style="padding:7px 8px;text-align:center">Qtde (un)</th>
+          <th style="padding:7px 8px;text-align:center">Caixas</th>
+          <th style="padding:7px 8px;text-align:center;width:80px">Conferido ☐</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sel.map((r,i)=>`
+        <tr style="background:${i%2===0?'#fff':'#f8f8f5'}">
+          <td style="padding:6px 8px;color:#888">${i+1}</td>
+          <td style="padding:6px 8px;font-family:monospace;color:#888">${r.cod}</td>
+          <td style="padding:6px 8px;font-weight:500">${r.descricao}</td>
+          <td style="padding:6px 8px;color:#555">${r.categoria}</td>
+          <td style="padding:6px 8px;text-align:center;font-weight:700">${r.qtdEnviar}</td>
+          <td style="padding:6px 8px;text-align:center">${Math.ceil(r.qtdEnviar/r.unidCx)}</td>
+          <td style="padding:6px 8px;text-align:center;font-size:16px">☐</td>
+        </tr>`).join('')}
+        <tr style="background:#1a1a18;color:#fff;font-weight:700">
+          <td colspan="4" style="padding:7px 8px">TOTAL</td>
+          <td style="padding:7px 8px;text-align:center">${totalUn}</td>
+          <td style="padding:7px 8px;text-align:center">${totalCx}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;font-size:11px;color:#555">
+      <div>Solicitante: _______________________</div>
+      <div>Separado por: _____________________</div>
+      <div>Data entrega: _____________________</div>
+    </div>
+    <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#aaa;display:flex;justify-content:space-between">
+      <span>Simples e Natural — Controle de Estoque Central</span>
+      <span>Emitido: ${agora}</span>
+    </div>
+  </div>`;
+
+  document.body.classList.add('imprimindo-etiqueta');
+  function limpar(){
+    window.removeEventListener('afterprint',limpar);
+    pa.innerHTML='';
+    document.body.classList.remove('imprimindo-etiqueta');
+    // FIX: limpa tela após imprimir
+    setTimeout(()=>{
+      if(confirm('Impressão concluída. Limpar a requisição para o próximo usuário?')) limparRequisicao();
+    },300);
+  }
+  window.addEventListener('afterprint',limpar);
+  window.print();
 }
 
 function limparRequisicao(){
-  reqItens = [];
-  document.getElementById('req-resultado-area').style.display = 'none';
-  document.getElementById('req-upload-status').style.display = 'none';
-  document.getElementById('req-upload-status').innerHTML = '';
-  const fa = document.getElementById('req-file-input');
-  if(fa) fa.value = '';
+  reqItens=[];
+  document.getElementById('req-resultado-area').style.display='none';
+  document.getElementById('req-upload-status').style.display='none';
+  document.getElementById('req-upload-status').innerHTML='';
+  const fa=document.getElementById('req-file-input');if(fa)fa.value='';
 }
 
 // =====================================================================
