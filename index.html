@@ -559,7 +559,7 @@ tr:hover td{background:#fafaf7}
       </select>
     </div>
     <table>
-      <thead><tr><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
+      <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
       <tbody id="tabela-lotes"></tbody>
     </table>
     <div id="tabela-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhum produto encontrado.</div>
@@ -571,28 +571,11 @@ tr:hover td{background:#fafaf7}
   <h1>Histórico</h1>
   <p class="sub">Todas as movimentações registradas</p>
   <div class="card">
-    <div class="filter-row" style="margin-bottom:16px">
-      <div class="search-wrap" style="flex:1;min-width:180px">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="hist-filtro-produto" placeholder="Buscar produto ou lote..."
-          oninput="renderHistorico()" style="padding-left:34px">
-      </div>
-      <select id="hist-filtro-tipo" onchange="renderHistorico()" style="max-width:180px">
-        <option value="">Todos os tipos</option>
-        <option value="ENTRADA">Entrada</option>
-        <option value="SAÍDA TOTAL">Saída total</option>
-        <option value="SAÍDA PARCIAL">Saída parcial</option>
-        <option value="RESÍDUO GERADO">Resíduo gerado</option>
-        <option value="AJUSTE">Ajuste</option>
-      </select>
-      <button class="btn btn-sm" onclick="limparFiltrosHistorico()" style="white-space:nowrap">Limpar filtros</button>
-    </div>
-    <div id="hist-count" style="font-size:12px;color:#888;margin-bottom:10px"></div>
     <table>
       <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Produto</th><th>Lote</th><th>Quantidade</th><th>Destino/Origem</th></tr></thead>
       <tbody id="tabela-hist"></tbody>
     </table>
-    <div id="hist-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhuma movimentação encontrada.</div>
+    <div id="hist-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhuma movimentação registrada.</div>
   </div>
 </div>
 
@@ -898,9 +881,6 @@ tr:hover td{background:#fafaf7}
           <input type="checkbox" id="filtro-prod-inativos" onchange="renderTabelaProdutos()" style="width:auto">
           Mostrar inativos
         </label>
-        <select id="filtro-prod-cat" onchange="renderTabelaProdutos()" style="max-width:180px">
-          <option value="">Todas categorias</option>
-        </select>
         <input type="text" id="filtro-prod" placeholder="Buscar..." oninput="renderTabelaProdutos()" style="max-width:200px">
       </div>
     </div>
@@ -2568,11 +2548,43 @@ function renderDashboard(){
   const venc=disp.filter(e=>calcStatus(e.data_validade)==='VENCIDO').length;
   const crit=disp.filter(e=>calcStatus(e.data_validade)==='CRITICO').length;
   const totalUnid=disp.reduce((s,e)=>s+e.quantidade_atual,0);
+
+  // Saldo por câmara
+  const camaras={};
+  disp.forEach(e=>{
+    const c=e.local||'Sem local';
+    if(!camaras[c]){camaras[c]={cx:0,un:0};}
+    camaras[c].cx++;
+    camaras[c].un+=e.quantidade_atual;
+  });
+  const camarasOrdenadas=Object.entries(camaras).sort((a,b)=>a[0].localeCompare(b[0]));
+  const camarasHtml=camarasOrdenadas.map(([c,v])=>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0ea;font-size:12px">
+      <span style="color:#555;font-weight:500">${c}</span>
+      <span><strong>${v.cx}</strong> cx · <strong>${v.un}</strong> un</span>
+    </div>`
+  ).join('');
+
   document.getElementById('metrics-cards').innerHTML=`
-    <div class="metric"><div class="metric-lbl">Caixas em estoque</div><div class="metric-val">${disp.length}</div><div class="metric-sub">${totalUnid} unidades</div></div>
-    <div class="metric"><div class="metric-lbl">Saídas registradas</div><div class="metric-val">${movs.filter(m=>m.tipo.startsWith('SAÍDA')).length}</div><div class="metric-sub">${movs.filter(m=>m.tipo==='ENTRADA').length} entradas</div></div>
-    <div class="metric"><div class="metric-lbl">Críticos (${cfgValidade.critico} dias)</div><div class="metric-val" style="color:${crit>0?'#b8860b':'inherit'}">${crit}</div><div class="metric-sub">caixas</div></div>
-    <div class="metric"><div class="metric-lbl">Vencidos</div><div class="metric-val" style="color:${venc>0?'#c0392b':'inherit'}">${venc}</div><div class="metric-sub">requer ação</div></div>`;
+    <div class="metric">
+      <div class="metric-lbl">Caixas em estoque</div>
+      <div class="metric-val">${disp.length}</div>
+      <div class="metric-sub">${totalUnid} unidades</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">Por câmara</div>
+      <div style="margin-top:6px">${camarasHtml||'<span style="color:#bbb;font-size:12px">Sem dados</span>'}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">Críticos (${cfgValidade.critico} dias)</div>
+      <div class="metric-val" style="color:${crit>0?'#b8860b':'inherit'}">${crit}</div>
+      <div class="metric-sub">caixas</div>
+    </div>
+    <div class="metric">
+      <div class="metric-lbl">Vencidos</div>
+      <div class="metric-val" style="color:${venc>0?'#c0392b':'inherit'}">${venc}</div>
+      <div class="metric-sub">requer ação</div>
+    </div>`;
   // Por categoria
   const cats={};
   disp.forEach(e=>{if(!cats[e.categoria])cats[e.categoria]={cx:0,un:0};cats[e.categoria].cx++;cats[e.categoria].un+=e.quantidade_atual;});
@@ -2601,19 +2613,15 @@ function renderDashboard(){
 // Consolida saldo por produto — inclui todos os cadastrados, mesmo zerados
 function getSaldoProdutos(){
   const disp = embalagens.filter(e => e.status === 'disponivel');
-
-  // Mapa produto_id → saldo (usa catálogo atual para descrição e categoria)
   const mapProd = {};
   produtos.forEach(p => { mapProd[String(p.codigo)] = p; });
 
   const map = {};
   disp.forEach(e => {
     const k = String(e.produto_id);
-    // Busca descrição e categoria do catálogo atual (reflete edições)
     const prodAtual = mapProd[k];
     const descricao = prodAtual ? prodAtual.descricao : e.produto_descricao;
     const categoria = prodAtual ? prodAtual.categoria : e.categoria;
-
     if (!map[k]) map[k] = {
       produto_id: e.produto_id,
       descricao, categoria,
@@ -2635,7 +2643,6 @@ function getSaldoProdutos(){
     if (rank[st] > rank[m.piorStatus]) m.piorStatus = st;
   });
 
-  // Adiciona produtos cadastrados sem estoque
   produtos.forEach(p => {
     const k = String(p.codigo);
     if (!map[k]) {
@@ -2661,6 +2668,7 @@ function renderTabela(){
   const busca  = (document.getElementById('filtro-busca').value || '').toLowerCase();
   const cat    = document.getElementById('filtro-cat').value;
   const st     = document.getElementById('filtro-status').value;
+  const ativo  = document.getElementById('filtro-ativo')?.value ?? 'ativos';
 
   const stMap = {
     VENCIDO: ['badge-danger','Vencido'],
@@ -2671,12 +2679,14 @@ function renderTabela(){
   };
 
   let rows = getSaldoProdutos().filter(r => {
-    if (busca && !r.descricao.toLowerCase().includes(busca)) return false;
+    if (busca && !r.descricao.toLowerCase().includes(busca) && !String(r.produto_id).includes(busca)) return false;
     if (cat   && r.categoria !== cat) return false;
     if (st) {
       if (st === 'ZERO' && r.piorStatus !== 'ZERO') return false;
       if (st !== 'ZERO' && r.piorStatus !== st)     return false;
     }
+    if (ativo === 'ativos'   && !r.ativo) return false;
+    if (ativo === 'inativos' &&  r.ativo) return false;
     return true;
   });
 
@@ -2691,20 +2701,24 @@ function renderTabela(){
     const totalUn = r.unCompletas + r.unParciais;
     const [cls, lbl] = stMap[r.piorStatus] || ['badge-gray','—'];
     const zero = r.piorStatus === 'ZERO';
-    return `<tr style="${zero ? 'opacity:.55' : ''}">
-      <td style="font-size:12px${zero ? ';color:#888' : ''}">${r.descricao}</td>
+    const inativo = !r.ativo;
+    return `<tr style="${zero || inativo ? 'opacity:.5' : ''}">
+      <td style="font-family:monospace;font-size:11px;color:#888">${r.produto_id}</td>
+      <td style="font-size:12px${zero||inativo?';color:#888':''}">
+        ${r.descricao}
+        ${inativo?'<span style="background:#fde8e8;color:#c0392b;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px">Inativo</span>':''}
+      </td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
-      <td style="text-align:center${r.cxCompletas ? ';color:#1e7e34;font-weight:600' : ';color:#bbb'}">${r.cxCompletas || '—'}</td>
-      <td style="text-align:center${r.cxParciais  ? ';color:#b8860b;font-weight:600' : ';color:#bbb'}">${r.cxParciais  || '—'}</td>
-      <td style="text-align:center;font-weight:700;font-size:14px${zero?';color:#ccc':''}">${totalUn || '0'}</td>
-      <td style="font-size:12px">${r.validadeMaisProxima ? fmtDate(r.validadeMaisProxima) : '—'}</td>
+      <td style="text-align:center${r.cxCompletas?';color:#1e7e34;font-weight:600':';color:#bbb'}">${r.cxCompletas||'—'}</td>
+      <td style="text-align:center${r.cxParciais ?';color:#b8860b;font-weight:600':';color:#bbb'}">${r.cxParciais ||'—'}</td>
+      <td style="text-align:center;font-weight:700;font-size:14px${zero||inativo?';color:#ccc':''}">${totalUn||'0'}</td>
+      <td style="font-size:12px">${r.validadeMaisProxima?fmtDate(r.validadeMaisProxima):'—'}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
     </tr>`;
   }).join('');
 
-  // Rodapé totalizador
   tbody.innerHTML += `<tr style="border-top:2px solid #1a1a18;font-weight:700;background:#f8f8f5">
-    <td colspan="4" style="font-size:12px">Total — ${rows.length} produtos listados</td>
+    <td colspan="5" style="font-size:12px">Total — ${rows.length} produtos listados</td>
     <td style="text-align:center;font-size:15px">${total}</td>
     <td colspan="2"></td>
   </tr>`;
@@ -2825,35 +2839,11 @@ function imprimirSaldoEstoque(){
 }
 
 function renderHistorico(){
-  const tbody=document.getElementById('tabela-hist');
-  const empty=document.getElementById('hist-empty');
-  const count=document.getElementById('hist-count');
-
-  const busca=(document.getElementById('hist-filtro-produto')?.value||'').toLowerCase();
-  const tipo =document.getElementById('hist-filtro-tipo')?.value||'';
-
-  if(!movs.length){tbody.innerHTML='';empty.style.display='block';if(count)count.textContent='';return;}
-
-  const ts={'ENTRADA':'badge-ok','SAÍDA TOTAL':'badge-info','SAÍDA PARCIAL':'badge-warn','RESÍDUO GERADO':'badge-gray','AJUSTE':'badge-gray'};
-
-  const filtrados=[...movs].reverse().filter(m=>{
-    if(tipo && m.tipo!==tipo) return false;
-    if(busca && !m.produto.toLowerCase().includes(busca) && !m.codigo.toLowerCase().includes(busca) && !(m.lote||'').toLowerCase().includes(busca)) return false;
-    return true;
-  });
-
-  if(!filtrados.length){
-    tbody.innerHTML='';
-    empty.style.display='block';
-    empty.textContent='Nenhuma movimentação encontrada com os filtros selecionados.';
-    if(count) count.textContent='';
-    return;
-  }
-
+  const tbody=document.getElementById('tabela-hist'),empty=document.getElementById('hist-empty');
+  if(!movs.length){tbody.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  if(count) count.textContent=filtrados.length+' de '+movs.length+' movimentações';
-
-  tbody.innerHTML=filtrados.map(m=>`<tr>
+  const ts={'ENTRADA':'badge-ok','SAÍDA TOTAL':'badge-info','SAÍDA PARCIAL':'badge-warn','RESÍDUO GERADO':'badge-gray','AJUSTE':'badge-gray'};
+  tbody.innerHTML=[...movs].reverse().map(m=>`<tr>
     <td style="color:#888;font-size:12px">${m.data}</td>
     <td><span class="badge ${ts[m.tipo]||'badge-gray'}" style="white-space:nowrap">${m.tipo}</span></td>
     <td>${m.produto}</td>
@@ -2861,14 +2851,6 @@ function renderHistorico(){
     <td style="font-weight:500">${m.quantidade}</td>
     <td style="color:#888">${m.destino}</td>
   </tr>`).join('');
-}
-
-function limparFiltrosHistorico(){
-  const bp=document.getElementById('hist-filtro-produto');
-  const bt=document.getElementById('hist-filtro-tipo');
-  if(bp) bp.value='';
-  if(bt) bt.value='';
-  renderHistorico();
 }
 
 // =====================================================================
@@ -2934,13 +2916,14 @@ function gerarRelatorioDetalhado(embs){
         <div style="font-size:12px;color:#888">${new Date().toLocaleString('pt-BR')}</div>
       </div>
       <table style="font-size:12px">
-        <thead><tr><th>Produto</th><th>Categoria</th><th>Lote</th><th>Tipo</th><th>Qtd (un)</th><th>Produção</th><th>Validade</th><th>Semana</th><th>Local</th><th>Status</th></tr></thead>
+        <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Lote</th><th>Tipo</th><th>Qtd (un)</th><th>Produção</th><th>Validade</th><th>Semana</th><th>Local</th><th>Status</th></tr></thead>
         <tbody>${embs.map(e=>{
           const s=calcStatus(e.data_validade);const[cls,lbl]=stMap[s];
           const tipo=e.avulso
             ?'<span style="background:#fff8e1;color:#b8860b;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600">Parcial</span>'
             :'<span style="background:#e6f4ea;color:#1e7e34;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600">Completa</span>';
           return`<tr>
+            <td style="font-family:monospace;font-size:11px;color:#888">${e.produto_id}</td>
             <td style="font-size:11px">${e.produto_descricao}</td>
             <td style="color:#888;font-size:11px">${e.categoria}</td>
             <td style="font-family:monospace;font-size:10px">${e.codigo}</td>
@@ -2995,7 +2978,7 @@ function gerarRelatorioResumo(embs){
       </div>
       <table style="font-size:12px">
         <thead><tr>
-          <th>Produto</th><th>Categoria</th>
+          <th>Código</th><th>Produto</th><th>Categoria</th>
           <th style="text-align:center">Cx completas</th><th style="text-align:center">Un completas</th>
           <th style="text-align:center">Cx parciais</th><th style="text-align:center">Un parciais</th>
           <th style="text-align:center;font-weight:700">Total un</th>
@@ -3005,6 +2988,7 @@ function gerarRelatorioResumo(embs){
           const[cls,lbl]=stMap[r.piorStatus];
           const total=r.unCompletas+r.unParciais;
           return`<tr>
+            <td style="font-family:monospace;font-size:11px;color:#888">${r.produto_id}</td>
             <td style="font-size:11px">${r.descricao}</td>
             <td style="color:#888;font-size:11px">${r.categoria}</td>
             <td style="text-align:center">${r.cxCompletas||'—'}</td>
@@ -3480,24 +3464,11 @@ function toggleAtivoProduto(cod){
 
 function renderTabelaProdutos(){
   const q=(document.getElementById('filtro-prod').value||'').toLowerCase();
-  const cat=(document.getElementById('filtro-prod-cat')?.value||'');
   const mostrarInativos=document.getElementById('filtro-prod-inativos')?.checked;
-
-  // Popular select de categorias dinamicamente
-  const selCat=document.getElementById('filtro-prod-cat');
-  if(selCat){
-    const catAtual=selCat.value;
-    const cats=[...new Set(produtos.map(p=>p.categoria).filter(Boolean))].sort();
-    selCat.innerHTML='<option value="">Todas categorias</option>'+
-      cats.map(c=>`<option value="${c}" ${c===catAtual?'selected':''}>${c}</option>`).join('');
-  }
-
   const lista=produtos.filter(p=>{
     if(!mostrarInativos&&p.ativo===false) return false;
-    if(cat&&p.categoria!==cat) return false;
     return !q||p.descricao.toLowerCase().includes(q)||String(p.codigo).includes(q);
   });
-
   document.getElementById('cnt-produtos').textContent=lista.length;
   document.getElementById('tabela-produtos').innerHTML=lista.map(p=>{
     const inativo=p.ativo===false;
