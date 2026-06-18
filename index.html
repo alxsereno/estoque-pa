@@ -161,6 +161,7 @@ tr:hover td{background:#fafaf7}
     <div class="nav-item" onclick="show('relatorio')" id="nav-relatorio"><span class="nav-icon">⎙</span> Relatório</div>
     <div class="nav-item" onclick="show('ajuste')" id="nav-ajuste"><span class="nav-icon">✎</span> Ajuste</div>
     <div class="nav-item" onclick="show('inventario')" id="nav-inventario"><span class="nav-icon">✓</span> Inventário</div>
+    <div class="nav-item" onclick="show('requisicao')" id="nav-requisicao"><span class="nav-icon">⇗</span> Req. Lojas</div>
     <div class="nav-section">Cadastros</div>
     <div class="nav-item" onclick="show('cad-produtos')" id="nav-cad-produtos"><span class="nav-icon">□</span> Produtos</div>
     <div class="nav-section">Config</div>
@@ -559,7 +560,7 @@ tr:hover td{background:#fafaf7}
       </select>
     </div>
     <table>
-      <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
+      <thead><tr><th>Produto</th><th>Categoria</th><th>Cx completas</th><th>Cx parciais</th><th>Total unid.</th><th>Validade mais próx.</th><th>Status</th></tr></thead>
       <tbody id="tabela-lotes"></tbody>
     </table>
     <div id="tabela-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhum produto encontrado.</div>
@@ -993,6 +994,48 @@ tr:hover td{background:#fafaf7}
     <button class="btn btn-dark" onclick="abrirModalUsuarios()">Gerenciar usuários</button>
   </div>
 
+  <!-- REQUISIÇÃO DE LOJAS -->
+  <div class="card">
+    <div class="card-title">Requisição de Estoque — Lojas</div>
+    <p style="font-size:12px;color:#888;margin-bottom:16px">
+      Configure a quantidade mínima de estoque (em unidades) e o lote máximo de envio (em unidades) por categoria para cada loja.
+      Quando o estoque da loja estiver abaixo do mínimo, o sistema sugerirá o envio do lote configurado.
+    </p>
+
+    <div style="margin-bottom:14px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button id="req-cfg-btn-cambui" onclick="setReqCfgLoja('Cambuí')"
+          style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #1a1a18;border-radius:7px;background:#1a1a18;color:#fff;cursor:pointer">
+          Cambuí
+        </button>
+        <button id="req-cfg-btn-barao" onclick="setReqCfgLoja('Barão Geraldo')"
+          style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#555;cursor:pointer">
+          Barão Geraldo
+        </button>
+        <button id="req-cfg-btn-indaiatuba" onclick="setReqCfgLoja('Indaiatuba')"
+          style="padding:6px 16px;font-size:12px;font-weight:600;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#555;cursor:pointer">
+          Indaiatuba
+        </button>
+      </div>
+
+      <table style="width:100%;font-size:13px;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="text-align:left;font-size:11px;font-weight:600;color:#888;padding:0 10px 8px 0;text-transform:uppercase;letter-spacing:.04em">Categoria</th>
+            <th style="text-align:center;font-size:11px;font-weight:600;color:#888;padding:0 10px 8px;text-transform:uppercase;letter-spacing:.04em">Mínimo (un)</th>
+            <th style="text-align:center;font-size:11px;font-weight:600;color:#888;padding:0 0 8px 10px;text-transform:uppercase;letter-spacing:.04em">Lote máx. envio (un)</th>
+          </tr>
+        </thead>
+        <tbody id="req-cfg-tabela"></tbody>
+      </table>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="resetarReqCfg()">Restaurar padrão</button>
+      <button class="btn btn-dark" onclick="salvarReqCfg()">Salvar</button>
+    </div>
+  </div>
+
   <!-- ZONA DE PERIGO -->
   <div class="card" style="border:1.5px solid #fde8e8">
     <div class="card-title" style="color:#c0392b">Zona de perigo</div>
@@ -1003,6 +1046,135 @@ tr:hover td{background:#fafaf7}
     <button onclick="limparTodosDados()" class="btn btn-danger">Apagar todos os dados</button>
   </div>
 
+</div>
+
+<!-- ===== REQUISIÇÃO DE ESTOQUE LOJAS ===== -->
+<div id="screen-requisicao" class="screen">
+  <h1>Requisição de Estoque — Lojas</h1>
+  <p class="sub">Cruzamento do estoque das lojas com o estoque central</p>
+
+  <!-- PASSO 1: Loja + upload -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="width:24px;height:24px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">1</div>
+      <div class="card-title" style="margin-bottom:0">Selecione a loja e carregue o relatório de estoque</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button id="req-btn-cambui" onclick="selecionarLojaReq('Cambuí')"
+        style="padding:8px 18px;font-size:13px;font-weight:600;border:2px solid #1a1a18;border-radius:8px;background:#1a1a18;color:#fff;cursor:pointer">
+        🏪 Cambuí
+      </button>
+      <button id="req-btn-barao" onclick="selecionarLojaReq('Barão Geraldo')"
+        style="padding:8px 18px;font-size:13px;font-weight:600;border:2px solid #ddd;border-radius:8px;background:#fff;color:#555;cursor:pointer">
+        🏪 Barão Geraldo
+      </button>
+      <button id="req-btn-indaiatuba" onclick="selecionarLojaReq('Indaiatuba')"
+        style="padding:8px 18px;font-size:13px;font-weight:600;border:2px solid #ddd;border-radius:8px;background:#fff;color:#555;cursor:pointer">
+        🏪 Indaiatuba
+      </button>
+    </div>
+
+    <div id="req-drop-area"
+      onclick="document.getElementById('req-file-input').click()"
+      ondragover="event.preventDefault();this.style.borderColor='#1a1a18'"
+      ondragleave="this.style.borderColor='#ddd'"
+      ondrop="event.preventDefault();this.style.borderColor='#ddd';processarArquivoReq(event.dataTransfer.files[0])"
+      style="border:2px dashed #ddd;border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border-color .15s">
+      <div style="font-size:32px;color:#bbb;margin-bottom:8px">↑</div>
+      <div style="font-size:14px;font-weight:500;color:#555;margin-bottom:4px">Clique ou arraste o relatório de estoque da loja</div>
+      <div style="font-size:12px;color:#aaa">Excel (.xlsx) exportado do PDV — coluna D: código · coluna H: quantidade</div>
+      <input type="file" id="req-file-input" accept=".xlsx,.xls" style="display:none"
+        onchange="processarArquivoReq(this.files[0]);this.value=''">
+    </div>
+    <div id="req-upload-status" style="display:none;margin-top:10px"></div>
+  </div>
+
+  <!-- PASSO 2: Resultado -->
+  <div id="req-resultado-area" style="display:none">
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:24px;height:24px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">2</div>
+        <div class="card-title" style="margin-bottom:0" id="req-titulo-resultado">Resultado do cruzamento</div>
+        <div style="margin-left:auto;font-size:12px;color:#888" id="req-data-leitura"></div>
+      </div>
+
+      <!-- Métricas -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+        <div style="background:#f8f8f5;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Cruzados</div>
+          <div style="font-size:22px;font-weight:600" id="req-m-cruzados">0</div>
+        </div>
+        <div style="background:#fff8e1;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#b8860b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Sugestões</div>
+          <div style="font-size:22px;font-weight:600;color:#b8860b" id="req-m-sugestoes">0</div>
+        </div>
+        <div style="background:#fde8e8;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#c0392b;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Sem saldo</div>
+          <div style="font-size:22px;font-weight:600;color:#c0392b" id="req-m-semsaldo">0</div>
+        </div>
+        <div style="background:#f0f0ea;border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:11px;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Ignorados</div>
+          <div style="font-size:22px;font-weight:600;color:#888" id="req-m-ignorados">0</div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="req-filtro-busca" placeholder="Buscar produto..." oninput="renderTabelaReq()" style="flex:1;min-width:160px">
+        <select id="req-filtro-cat" onchange="renderTabelaReq()" style="max-width:200px">
+          <option value="">Todas categorias</option>
+        </select>
+        <select id="req-filtro-status" onchange="renderTabelaReq()" style="max-width:180px">
+          <option value="">Todos</option>
+          <option value="enviar">Sugestão de envio</option>
+          <option value="ok">Estoque OK</option>
+          <option value="zero">Sem saldo central</option>
+        </select>
+        <label style="font-size:12px;display:flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap">
+          <input type="checkbox" id="req-sel-todos" onchange="toggleSelecionarTodosReq(this.checked)" style="width:auto">
+          Selecionar todos com sugestão
+        </label>
+      </div>
+
+      <!-- Tabela -->
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:32px"></th>
+              <th>Cód.</th>
+              <th>Produto</th>
+              <th>Categoria</th>
+              <th style="text-align:center">Qtde loja</th>
+              <th style="text-align:center">Mínimo</th>
+              <th style="text-align:center">Saldo central</th>
+              <th style="text-align:center">Lote máx.</th>
+              <th style="text-align:center">Qtde a enviar</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="req-tabela"></tbody>
+        </table>
+        <div id="req-tabela-empty" style="display:none;color:#bbb;padding:20px;text-align:center;font-size:13px">Nenhum item encontrado.</div>
+      </div>
+    </div>
+
+    <!-- PASSO 3: Confirmar -->
+    <div class="card" id="req-confirmar-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div style="width:24px;height:24px;border-radius:50%;background:#1a1a18;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">3</div>
+        <div class="card-title" style="margin-bottom:0">Confirmar e gerar requisição</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+        <div style="font-size:13px;color:#555" id="req-resumo-texto">Nenhum item selecionado.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="exportarReqCSV()">↓ Exportar lista (.csv)</button>
+          <button class="btn btn-dark" onclick="finalizarRequisicao()">✓ Finalizar requisição</button>
+          <button class="btn btn-sm" onclick="limparRequisicao()" style="color:#c0392b;border-color:#fde8e8">✕ Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 </main><!-- content -->
@@ -1499,6 +1671,7 @@ function show(s){
   if(s==='cad-produtos'){popularSelectCategorias('cp-categoria');renderTabelaProdutos();}
   if(s==='relatorio') initRelatorio();
   if(s==='inventario') initInventario();
+  if(s==='requisicao') initRequisicao();
   if(s==='ajuste'){document.getElementById('ajuste-form').style.display='none';document.getElementById('ajuste-ok').style.display='none';renderTabelaAjustes();}
 }
 
@@ -2548,43 +2721,11 @@ function renderDashboard(){
   const venc=disp.filter(e=>calcStatus(e.data_validade)==='VENCIDO').length;
   const crit=disp.filter(e=>calcStatus(e.data_validade)==='CRITICO').length;
   const totalUnid=disp.reduce((s,e)=>s+e.quantidade_atual,0);
-
-  // Saldo por câmara
-  const camaras={};
-  disp.forEach(e=>{
-    const c=e.local||'Sem local';
-    if(!camaras[c]){camaras[c]={cx:0,un:0};}
-    camaras[c].cx++;
-    camaras[c].un+=e.quantidade_atual;
-  });
-  const camarasOrdenadas=Object.entries(camaras).sort((a,b)=>a[0].localeCompare(b[0]));
-  const camarasHtml=camarasOrdenadas.map(([c,v])=>
-    `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0ea;font-size:12px">
-      <span style="color:#555;font-weight:500">${c}</span>
-      <span><strong>${v.cx}</strong> cx · <strong>${v.un}</strong> un</span>
-    </div>`
-  ).join('');
-
   document.getElementById('metrics-cards').innerHTML=`
-    <div class="metric">
-      <div class="metric-lbl">Caixas em estoque</div>
-      <div class="metric-val">${disp.length}</div>
-      <div class="metric-sub">${totalUnid} unidades</div>
-    </div>
-    <div class="metric">
-      <div class="metric-lbl">Por câmara</div>
-      <div style="margin-top:6px">${camarasHtml||'<span style="color:#bbb;font-size:12px">Sem dados</span>'}</div>
-    </div>
-    <div class="metric">
-      <div class="metric-lbl">Críticos (${cfgValidade.critico} dias)</div>
-      <div class="metric-val" style="color:${crit>0?'#b8860b':'inherit'}">${crit}</div>
-      <div class="metric-sub">caixas</div>
-    </div>
-    <div class="metric">
-      <div class="metric-lbl">Vencidos</div>
-      <div class="metric-val" style="color:${venc>0?'#c0392b':'inherit'}">${venc}</div>
-      <div class="metric-sub">requer ação</div>
-    </div>`;
+    <div class="metric"><div class="metric-lbl">Caixas em estoque</div><div class="metric-val">${disp.length}</div><div class="metric-sub">${totalUnid} unidades</div></div>
+    <div class="metric"><div class="metric-lbl">Saídas registradas</div><div class="metric-val">${movs.filter(m=>m.tipo.startsWith('SAÍDA')).length}</div><div class="metric-sub">${movs.filter(m=>m.tipo==='ENTRADA').length} entradas</div></div>
+    <div class="metric"><div class="metric-lbl">Críticos (${cfgValidade.critico} dias)</div><div class="metric-val" style="color:${crit>0?'#b8860b':'inherit'}">${crit}</div><div class="metric-sub">caixas</div></div>
+    <div class="metric"><div class="metric-lbl">Vencidos</div><div class="metric-val" style="color:${venc>0?'#c0392b':'inherit'}">${venc}</div><div class="metric-sub">requer ação</div></div>`;
   // Por categoria
   const cats={};
   disp.forEach(e=>{if(!cats[e.categoria])cats[e.categoria]={cx:0,un:0};cats[e.categoria].cx++;cats[e.categoria].un+=e.quantidade_atual;});
@@ -2613,19 +2754,15 @@ function renderDashboard(){
 // Consolida saldo por produto — inclui todos os cadastrados, mesmo zerados
 function getSaldoProdutos(){
   const disp = embalagens.filter(e => e.status === 'disponivel');
-  const mapProd = {};
-  produtos.forEach(p => { mapProd[String(p.codigo)] = p; });
 
+  // Monta mapa produto_id → saldo
   const map = {};
   disp.forEach(e => {
     const k = String(e.produto_id);
-    const prodAtual = mapProd[k];
-    const descricao = prodAtual ? prodAtual.descricao : e.produto_descricao;
-    const categoria = prodAtual ? prodAtual.categoria : e.categoria;
     if (!map[k]) map[k] = {
       produto_id: e.produto_id,
-      descricao, categoria,
-      ativo: prodAtual ? prodAtual.ativo !== false : true,
+      descricao: e.produto_descricao,
+      categoria: e.categoria,
       cxCompletas: 0, unCompletas: 0,
       cxParciais: 0,  unParciais: 0,
       validadeMaisProxima: null,
@@ -2634,6 +2771,7 @@ function getSaldoProdutos(){
     const m = map[k];
     if (e.avulso) { m.cxParciais++; m.unParciais += e.quantidade_atual; }
     else           { m.cxCompletas++; m.unCompletas += e.quantidade_atual; }
+    // Validade mais próxima
     if (e.data_validade) {
       if (!m.validadeMaisProxima || e.data_validade < m.validadeMaisProxima)
         m.validadeMaisProxima = e.data_validade;
@@ -2643,20 +2781,18 @@ function getSaldoProdutos(){
     if (rank[st] > rank[m.piorStatus]) m.piorStatus = st;
   });
 
+  // Adiciona todos os produtos cadastrados que ainda não estão no mapa
   produtos.forEach(p => {
     const k = String(p.codigo);
-    if (!map[k]) {
-      map[k] = {
-        produto_id: p.codigo,
-        descricao: p.descricao,
-        categoria: p.categoria,
-        ativo: p.ativo !== false,
-        cxCompletas: 0, unCompletas: 0,
-        cxParciais: 0,  unParciais: 0,
-        validadeMaisProxima: null,
-        piorStatus: 'ZERO'
-      };
-    }
+    if (!map[k]) map[k] = {
+      produto_id: p.codigo,
+      descricao: p.descricao,
+      categoria: p.categoria,
+      cxCompletas: 0, unCompletas: 0,
+      cxParciais: 0,  unParciais: 0,
+      validadeMaisProxima: null,
+      piorStatus: 'ZERO'
+    };
   });
 
   return Object.values(map).sort((a,b) =>
@@ -2668,7 +2804,6 @@ function renderTabela(){
   const busca  = (document.getElementById('filtro-busca').value || '').toLowerCase();
   const cat    = document.getElementById('filtro-cat').value;
   const st     = document.getElementById('filtro-status').value;
-  const ativo  = document.getElementById('filtro-ativo')?.value ?? 'ativos';
 
   const stMap = {
     VENCIDO: ['badge-danger','Vencido'],
@@ -2679,14 +2814,12 @@ function renderTabela(){
   };
 
   let rows = getSaldoProdutos().filter(r => {
-    if (busca && !r.descricao.toLowerCase().includes(busca) && !String(r.produto_id).includes(busca)) return false;
+    if (busca && !r.descricao.toLowerCase().includes(busca)) return false;
     if (cat   && r.categoria !== cat) return false;
     if (st) {
       if (st === 'ZERO' && r.piorStatus !== 'ZERO') return false;
       if (st !== 'ZERO' && r.piorStatus !== st)     return false;
     }
-    if (ativo === 'ativos'   && !r.ativo) return false;
-    if (ativo === 'inativos' &&  r.ativo) return false;
     return true;
   });
 
@@ -2701,24 +2834,20 @@ function renderTabela(){
     const totalUn = r.unCompletas + r.unParciais;
     const [cls, lbl] = stMap[r.piorStatus] || ['badge-gray','—'];
     const zero = r.piorStatus === 'ZERO';
-    const inativo = !r.ativo;
-    return `<tr style="${zero || inativo ? 'opacity:.5' : ''}">
-      <td style="font-family:monospace;font-size:11px;color:#888">${r.produto_id}</td>
-      <td style="font-size:12px${zero||inativo?';color:#888':''}">
-        ${r.descricao}
-        ${inativo?'<span style="background:#fde8e8;color:#c0392b;font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;margin-left:6px">Inativo</span>':''}
-      </td>
+    return `<tr style="${zero ? 'opacity:.55' : ''}">
+      <td style="font-size:12px${zero ? ';color:#888' : ''}">${r.descricao}</td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
-      <td style="text-align:center${r.cxCompletas?';color:#1e7e34;font-weight:600':';color:#bbb'}">${r.cxCompletas||'—'}</td>
-      <td style="text-align:center${r.cxParciais ?';color:#b8860b;font-weight:600':';color:#bbb'}">${r.cxParciais ||'—'}</td>
-      <td style="text-align:center;font-weight:700;font-size:14px${zero||inativo?';color:#ccc':''}">${totalUn||'0'}</td>
-      <td style="font-size:12px">${r.validadeMaisProxima?fmtDate(r.validadeMaisProxima):'—'}</td>
+      <td style="text-align:center${r.cxCompletas ? ';color:#1e7e34;font-weight:600' : ';color:#bbb'}">${r.cxCompletas || '—'}</td>
+      <td style="text-align:center${r.cxParciais  ? ';color:#b8860b;font-weight:600' : ';color:#bbb'}">${r.cxParciais  || '—'}</td>
+      <td style="text-align:center;font-weight:700;font-size:14px${zero?';color:#ccc':''}">${totalUn || '0'}</td>
+      <td style="font-size:12px">${r.validadeMaisProxima ? fmtDate(r.validadeMaisProxima) : '—'}</td>
       <td><span class="badge ${cls}">${lbl}</span></td>
     </tr>`;
   }).join('');
 
+  // Rodapé totalizador
   tbody.innerHTML += `<tr style="border-top:2px solid #1a1a18;font-weight:700;background:#f8f8f5">
-    <td colspan="5" style="font-size:12px">Total — ${rows.length} produtos listados</td>
+    <td colspan="4" style="font-size:12px">Total — ${rows.length} produtos listados</td>
     <td style="text-align:center;font-size:15px">${total}</td>
     <td colspan="2"></td>
   </tr>`;
@@ -2916,14 +3045,13 @@ function gerarRelatorioDetalhado(embs){
         <div style="font-size:12px;color:#888">${new Date().toLocaleString('pt-BR')}</div>
       </div>
       <table style="font-size:12px">
-        <thead><tr><th>Código</th><th>Produto</th><th>Categoria</th><th>Lote</th><th>Tipo</th><th>Qtd (un)</th><th>Produção</th><th>Validade</th><th>Semana</th><th>Local</th><th>Status</th></tr></thead>
+        <thead><tr><th>Produto</th><th>Categoria</th><th>Lote</th><th>Tipo</th><th>Qtd (un)</th><th>Produção</th><th>Validade</th><th>Semana</th><th>Local</th><th>Status</th></tr></thead>
         <tbody>${embs.map(e=>{
           const s=calcStatus(e.data_validade);const[cls,lbl]=stMap[s];
           const tipo=e.avulso
             ?'<span style="background:#fff8e1;color:#b8860b;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600">Parcial</span>'
             :'<span style="background:#e6f4ea;color:#1e7e34;font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600">Completa</span>';
           return`<tr>
-            <td style="font-family:monospace;font-size:11px;color:#888">${e.produto_id}</td>
             <td style="font-size:11px">${e.produto_descricao}</td>
             <td style="color:#888;font-size:11px">${e.categoria}</td>
             <td style="font-family:monospace;font-size:10px">${e.codigo}</td>
@@ -2978,7 +3106,7 @@ function gerarRelatorioResumo(embs){
       </div>
       <table style="font-size:12px">
         <thead><tr>
-          <th>Código</th><th>Produto</th><th>Categoria</th>
+          <th>Produto</th><th>Categoria</th>
           <th style="text-align:center">Cx completas</th><th style="text-align:center">Un completas</th>
           <th style="text-align:center">Cx parciais</th><th style="text-align:center">Un parciais</th>
           <th style="text-align:center;font-weight:700">Total un</th>
@@ -2988,7 +3116,6 @@ function gerarRelatorioResumo(embs){
           const[cls,lbl]=stMap[r.piorStatus];
           const total=r.unCompletas+r.unParciais;
           return`<tr>
-            <td style="font-family:monospace;font-size:11px;color:#888">${r.produto_id}</td>
             <td style="font-size:11px">${r.descricao}</td>
             <td style="color:#888;font-size:11px">${r.categoria}</td>
             <td style="text-align:center">${r.cxCompletas||'—'}</td>
@@ -3509,6 +3636,9 @@ function initConfig(){
   previewStatus();
   renderListaResponsaveis();
   document.getElementById('backup-feedback').style.display='none';
+  // Configuração da requisição
+  if(!cfgRequisicao || !Object.keys(cfgRequisicao).length) cfgRequisicao = getReqCfgDefault();
+  setReqCfgLoja(reqCfgLojaAtiva);
 }
 
 // ── Responsáveis ──────────────────────────────────────────────────────
@@ -3861,6 +3991,412 @@ function resetarConfigValidade(){
 }
 
 // =====================================================================
+// =====================================================================
+// CONFIGURAÇÃO DA REQUISIÇÃO DE LOJAS
+// =====================================================================
+const REQ_CFG_KEY = 'estoque_pa_req_cfg_v1';
+const LOJAS_REQ = ['Cambuí','Barão Geraldo','Indaiatuba'];
+let reqCfgLojaAtiva = 'Cambuí';
+// Estrutura: { 'Cambuí': { 'Ganho de Massa 300g': {minimo:24, loteMax:32}, ... }, ... }
+let cfgRequisicao = {};
+
+function getReqCfgDefault(){
+  const cfg = {};
+  LOJAS_REQ.forEach(loja => {
+    cfg[loja] = {};
+    todasCategorias().forEach(cat => {
+      cfg[loja][cat] = {minimo: 16, loteMax: 32};
+    });
+  });
+  return cfg;
+}
+
+async function carregarReqCfg(){
+  try{
+    const res = await fetch('/api/data/' + REQ_CFG_KEY);
+    const json = await res.json();
+    if(json.value) cfgRequisicao = json.value;
+    else cfgRequisicao = getReqCfgDefault();
+  }catch(e){ cfgRequisicao = getReqCfgDefault(); }
+}
+
+async function salvarReqCfg(){
+  // Lê valores da tabela antes de salvar
+  const tbody = document.getElementById('req-cfg-tabela');
+  if(tbody){
+    tbody.querySelectorAll('tr').forEach(tr => {
+      const cat = tr.dataset.cat;
+      if(!cat) return;
+      if(!cfgRequisicao[reqCfgLojaAtiva]) cfgRequisicao[reqCfgLojaAtiva] = {};
+      const inputs = tr.querySelectorAll('input[type=number]');
+      if(inputs[0]) cfgRequisicao[reqCfgLojaAtiva][cat] = {
+        minimo:  parseInt(inputs[0].value)||0,
+        loteMax: parseInt(inputs[1].value)||16
+      };
+    });
+  }
+  try{
+    await fetch('/api/data/' + REQ_CFG_KEY, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({value: cfgRequisicao})
+    });
+    toast('Configurações da requisição salvas');
+  }catch(e){ toast('Erro ao salvar'); }
+}
+
+function resetarReqCfg(){
+  if(!confirm('Restaurar valores padrão para '+reqCfgLojaAtiva+'?')) return;
+  cfgRequisicao[reqCfgLojaAtiva] = {};
+  todasCategorias().forEach(cat => {
+    cfgRequisicao[reqCfgLojaAtiva][cat] = {minimo:16, loteMax:32};
+  });
+  renderReqCfgTabela();
+}
+
+function setReqCfgLoja(loja){
+  reqCfgLojaAtiva = loja;
+  LOJAS_REQ.forEach(l => {
+    const btn = document.getElementById('req-cfg-btn-'+l.toLowerCase().replace(/\s/g,'-').replace(/ã/g,'a'));
+    if(btn){
+      btn.style.background = l===loja ? '#1a1a18' : '#fff';
+      btn.style.color = l===loja ? '#fff' : '#555';
+      btn.style.borderColor = l===loja ? '#1a1a18' : '#ddd';
+    }
+  });
+  renderReqCfgTabela();
+}
+
+function renderReqCfgTabela(){
+  const tbody = document.getElementById('req-cfg-tabela');
+  if(!tbody) return;
+  const cfgLoja = cfgRequisicao[reqCfgLojaAtiva] || {};
+  tbody.innerHTML = todasCategorias().map(cat => {
+    const v = cfgLoja[cat] || {minimo:16, loteMax:32};
+    return `<tr data-cat="${cat}">
+      <td style="padding:7px 10px 7px 0;font-size:13px;color:#333">${cat}</td>
+      <td style="padding:7px 10px;text-align:center">
+        <input type="number" min="0" value="${v.minimo}" style="width:80px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center">
+      </td>
+      <td style="padding:7px 0 7px 10px;text-align:center">
+        <input type="number" min="0" value="${v.loteMax}" style="width:80px;padding:5px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;text-align:center">
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// Botões de loja na config têm IDs com slug
+// Cambuí → req-cfg-btn-cambui
+// Barão Geraldo → req-cfg-btn-barao-geraldo → vamos simplificar:
+function getReqCfgBtnId(loja){
+  return 'req-cfg-btn-' + {
+    'Cambuí':'cambui',
+    'Barão Geraldo':'barao',
+    'Indaiatuba':'indaiatuba'
+  }[loja];
+}
+
+// =====================================================================
+// TELA REQUISIÇÃO DE LOJAS — stateless, sem persistência
+// =====================================================================
+let reqLojaAtiva = 'Cambuí';
+let reqItens = []; // itens cruzados
+
+function initRequisicao(){
+  // Nada a carregar — tela limpa sempre
+}
+
+function selecionarLojaReq(loja){
+  // Se já tem dados carregados, confirma troca
+  if(reqItens.length > 0 && !confirm('Trocar de loja limpará os dados carregados. Continuar?')) return;
+  reqLojaAtiva = loja;
+  limparRequisicao();
+  ['Cambuí','Barão Geraldo','Indaiatuba'].forEach(l => {
+    const id = 'req-btn-'+{Cambuí:'cambui','Barão Geraldo':'barao',Indaiatuba:'indaiatuba'}[l];
+    const btn = document.getElementById(id);
+    if(!btn) return;
+    btn.style.background = l===loja ? '#1a1a18' : '#fff';
+    btn.style.color = l===loja ? '#fff' : '#555';
+    btn.style.borderColor = l===loja ? '#1a1a18' : '#ddd';
+  });
+}
+
+async function processarArquivoReq(file){
+  if(!file) return;
+  const status = document.getElementById('req-upload-status');
+  status.style.display = 'block';
+  status.innerHTML = '<div style="color:#888;font-size:13px;padding:8px 0">Lendo arquivo...</div>';
+
+  try{
+    const buf = await file.arrayBuffer();
+    // Usa SheetJS se disponível
+    if(typeof XLSX === 'undefined'){
+      status.innerHTML = '<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Biblioteca Excel não carregada. Recarregue a página e tente novamente.</div>';
+      return;
+    }
+
+    const wb = XLSX.read(buf, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+
+    // Formato esperado: col D (índice 3) = código, col H (índice 7) = quantidade
+    // Cabeçalho na linha 6 (índice 5), dados a partir da linha 7 (índice 6)
+    // Linhas de GRUPO são identificadas pela coluna A começando com 'GRUPO:'
+    const estoqueLoja = {}; // cod → qtde
+    let linhaDados = 0;
+
+    // Encontra linha de cabeçalho
+    for(let i=0; i<rows.length; i++){
+      const r = rows[i];
+      if(r[0] && String(r[0]).includes('ID') && r[3] && String(r[3]).includes('Cód')) {
+        linhaDados = i+1; break;
+      }
+      // Fallback: procura por linha que tem 'Cód. barras' ou similar
+      if(r[3] && String(r[3]).toLowerCase().includes('cód')) {
+        linhaDados = i+1; break;
+      }
+    }
+    if(!linhaDados) linhaDados = 6; // padrão baseado na análise do arquivo
+
+    for(let i=linhaDados; i<rows.length; i++){
+      const r = rows[i];
+      // Pula linhas de grupo e linhas vazias
+      if(!r[0]) continue;
+      if(String(r[0]).startsWith('GRUPO')) continue;
+      const codRaw = r[3];
+      const qtdeRaw = r[7];
+      if(!codRaw && codRaw !== 0) continue;
+      try{
+        const cod = String(parseInt(float_parse(codRaw)));
+        const qtde = parseFloat(qtdeRaw) || 0;
+        if(cod && cod !== 'NaN') estoqueLoja[cod] = (estoqueLoja[cod]||0) + qtde;
+      }catch(e){}
+    }
+
+    const totalLidos = Object.keys(estoqueLoja).length;
+    if(!totalLidos){
+      status.innerHTML = '<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Nenhum produto encontrado. Verifique o formato do arquivo — coluna D: código · coluna H: quantidade.</div>';
+      return;
+    }
+
+    status.innerHTML = `<div style="background:#e6f4ea;border-radius:8px;padding:10px 14px;font-size:13px;color:#1e7e34">✓ ${totalLidos} produtos lidos do arquivo</div>`;
+
+    // Cruza com estoque central
+    cruzarEstoques(estoqueLoja, file.name);
+
+  }catch(err){
+    status.innerHTML = `<div style="background:#fde8e8;border-radius:8px;padding:12px;font-size:13px;color:#c0392b">Erro ao ler arquivo: ${err.message}</div>`;
+    console.error(err);
+  }
+}
+
+function float_parse(v){
+  if(typeof v === 'number') return v;
+  return parseFloat(String(v).replace(',','.'));
+}
+
+function cruzarEstoques(estoqueLoja, nomeArquivo){
+  const saldoCentral = getSaldoProdutos(); // array com saldo atual
+  const mapCentral = {};
+  saldoCentral.forEach(r => { mapCentral[String(r.produto_id)] = r; });
+
+  const cfgLoja = cfgRequisicao[reqLojaAtiva] || {};
+
+  reqItens = [];
+  let cruzados=0, sugestoes=0, semSaldo=0, ignorados=0;
+
+  Object.entries(estoqueLoja).forEach(([cod, qtdeLoja])=>{
+    const central = mapCentral[cod];
+    if(!central){ ignorados++; return; } // não cadastrado no central
+    cruzados++;
+
+    const cat = central.categoria;
+    const cfg = cfgLoja[cat] || {minimo:16, loteMax:32};
+    const saldoCx = central.cxCompletas + central.cxParciais;
+    const saldoUn = central.unCompletas + central.unParciais;
+    const precisaEnvio = qtdeLoja < cfg.minimo;
+    const temSaldo = saldoUn > 0;
+
+    let statusReq, sugestaoQtd;
+    if(!temSaldo){
+      statusReq = 'zero';
+      sugestaoQtd = 0;
+      semSaldo++;
+    } else if(precisaEnvio){
+      statusReq = 'enviar';
+      sugestaoQtd = Math.min(cfg.loteMax, saldoUn);
+      sugestoes++;
+    } else {
+      statusReq = 'ok';
+      sugestaoQtd = 0;
+    }
+
+    reqItens.push({
+      cod,
+      descricao: central.descricao,
+      categoria: cat,
+      qtdeLoja,
+      minimo: cfg.minimo,
+      saldoUn,
+      loteMax: cfg.loteMax,
+      sugestaoQtd,
+      qtdEnviar: statusReq === 'enviar' ? sugestaoQtd : 0,
+      selecionado: statusReq === 'enviar',
+      status: statusReq
+    });
+  });
+
+  // Totais
+  document.getElementById('req-m-cruzados').textContent = cruzados;
+  document.getElementById('req-m-sugestoes').textContent = sugestoes;
+  document.getElementById('req-m-semsaldo').textContent = semSaldo;
+  document.getElementById('req-m-ignorados').textContent = ignorados;
+  document.getElementById('req-titulo-resultado').textContent = `Resultado — ${reqLojaAtiva} · ${nomeArquivo}`;
+  document.getElementById('req-data-leitura').textContent = new Date().toLocaleString('pt-BR');
+
+  // Popular select de categorias
+  const cats = [...new Set(reqItens.map(i=>i.categoria))].sort();
+  const selCat = document.getElementById('req-filtro-cat');
+  selCat.innerHTML = '<option value="">Todas categorias</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  document.getElementById('req-resultado-area').style.display = 'block';
+  renderTabelaReq();
+  atualizarResumoReq();
+}
+
+function renderTabelaReq(){
+  const busca = (document.getElementById('req-filtro-busca')?.value||'').toLowerCase();
+  const cat   = document.getElementById('req-filtro-cat')?.value||'';
+  const st    = document.getElementById('req-filtro-status')?.value||'';
+
+  const filtrados = reqItens.filter(r => {
+    if(busca && !r.descricao.toLowerCase().includes(busca) && !r.cod.includes(busca)) return false;
+    if(cat && r.categoria !== cat) return false;
+    if(st && r.status !== st) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('req-tabela');
+  const empty = document.getElementById('req-tabela-empty');
+
+  if(!filtrados.length){ tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  tbody.innerHTML = filtrados.map((r,fi) => {
+    const idx = reqItens.indexOf(r);
+    const zero = r.status==='zero';
+    const ok   = r.status==='ok';
+    const enviar = r.status==='enviar';
+
+    const badgeHtml = zero
+      ? '<span class="badge badge-danger">Sem saldo</span>'
+      : ok
+        ? '<span class="badge badge-ok">✓ Estoque OK</span>'
+        : '<span class="badge badge-warn">↑ Enviar</span>';
+
+    const checkHtml = zero
+      ? '<input type="checkbox" disabled style="opacity:.3">'
+      : `<input type="checkbox" ${r.selecionado?'checked':''} onchange="toggleReqItem(${idx}, this.checked)">`;
+
+    const qtdHtml = (enviar && !zero)
+      ? `<input type="number" class="ajuste-input" min="1" max="${r.loteMax}" value="${r.qtdEnviar}"
+          onchange="atualizarQtdReq(${idx}, this.value)" style="width:70px;text-align:center">`
+      : '<span style="color:#bbb">—</span>';
+
+    return `<tr style="${zero?'opacity:.5':''}">
+      <td style="text-align:center">${checkHtml}</td>
+      <td style="font-family:monospace;font-size:11px;color:#888">${r.cod}</td>
+      <td style="font-size:12px;font-weight:${enviar?'500':'400'}">${r.descricao}</td>
+      <td style="font-size:11px;color:#888">${r.categoria}</td>
+      <td style="text-align:center">${r.qtdeLoja}</td>
+      <td style="text-align:center;color:#888">${r.minimo}</td>
+      <td style="text-align:center;font-weight:600;color:${zero?'#c0392b':r.saldoUn>32?'#1e7e34':'inherit'}">${r.saldoUn}</td>
+      <td style="text-align:center;color:#888">${r.loteMax}</td>
+      <td style="text-align:center">${qtdHtml}</td>
+      <td>${badgeHtml}</td>
+    </tr>`;
+  }).join('');
+
+  atualizarResumoReq();
+}
+
+function toggleReqItem(idx, checked){
+  if(reqItens[idx].status === 'zero') return;
+  reqItens[idx].selecionado = checked;
+  if(!checked) reqItens[idx].qtdEnviar = 0;
+  else if(reqItens[idx].qtdEnviar === 0) reqItens[idx].qtdEnviar = reqItens[idx].sugestaoQtd;
+  atualizarResumoReq();
+}
+
+function atualizarQtdReq(idx, val){
+  const v = parseInt(val)||0;
+  const max = reqItens[idx].loteMax;
+  reqItens[idx].qtdEnviar = Math.min(Math.max(v, 0), max);
+  atualizarResumoReq();
+}
+
+function toggleSelecionarTodosReq(checked){
+  reqItens.forEach(r => {
+    if(r.status === 'zero') return;
+    if(r.status === 'enviar'){
+      r.selecionado = checked;
+      if(checked && r.qtdEnviar === 0) r.qtdEnviar = r.sugestaoQtd;
+    }
+  });
+  renderTabelaReq();
+}
+
+function atualizarResumoReq(){
+  const selecionados = reqItens.filter(r => r.selecionado && r.status !== 'zero');
+  const totalItens = selecionados.length;
+  const totalUn = selecionados.reduce((s,r) => s + (r.qtdEnviar||0), 0);
+  const el = document.getElementById('req-resumo-texto');
+  if(el){
+    el.innerHTML = totalItens > 0
+      ? `<strong>${totalItens} ite${totalItens!==1?'ns':'m'}</strong> selecionado${totalItens!==1?'s':''} · <strong>${totalUn} unidades</strong> a enviar para <strong>${reqLojaAtiva}</strong>`
+      : 'Nenhum item selecionado.';
+  }
+}
+
+function exportarReqCSV(){
+  const selecionados = reqItens.filter(r => r.selecionado && r.qtdEnviar > 0);
+  if(!selecionados.length){ toast('Nenhum item selecionado'); return; }
+  const BOM = '\uFEFF';
+  const header = ['Codigo','Produto','Categoria','Qtde Loja','Minimo','Saldo Central','Lote Max','Qtde a Enviar'];
+  const rows = selecionados.map(r => [
+    r.cod, '"'+r.descricao.replace(/"/g,'""')+'"', '"'+r.categoria+'"',
+    r.qtdeLoja, r.minimo, r.saldoUn, r.loteMax, r.qtdEnviar
+  ].join(';'));
+  const csv = BOM + header.join(';') + '\r\n' + rows.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download = 'requisicao_'+reqLojaAtiva.replace(/\s/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Lista exportada');
+}
+
+function finalizarRequisicao(){
+  const selecionados = reqItens.filter(r => r.selecionado && r.qtdEnviar > 0);
+  if(!selecionados.length){ toast('Selecione ao menos um item'); return; }
+  const total = selecionados.reduce((s,r)=>s+r.qtdEnviar,0);
+  if(!confirm(`Finalizar requisição de ${selecionados.length} itens (${total} unidades) para ${reqLojaAtiva}?`)) return;
+  toast(`✓ Requisição finalizada — ${selecionados.length} itens · ${total} unidades para ${reqLojaAtiva}`);
+  // Limpa tela para próximo usuário
+  setTimeout(()=>limparRequisicao(), 1500);
+}
+
+function limparRequisicao(){
+  reqItens = [];
+  document.getElementById('req-resultado-area').style.display = 'none';
+  document.getElementById('req-upload-status').style.display = 'none';
+  document.getElementById('req-upload-status').innerHTML = '';
+  const fa = document.getElementById('req-file-input');
+  if(fa) fa.value = '';
+}
+
+// =====================================================================
 // INIT
 // =====================================================================
 // =====================================================================
@@ -4100,6 +4636,7 @@ document.getElementById('modal-usuarios').addEventListener('click', function(e){
 document.addEventListener('DOMContentLoaded', async ()=>{
   await carregarUsuarios();
   await carregarConfig();
+  await carregarReqCfg();
   const savedAt = await carregarDados();
   await carregarProdutos();
   popularSelectResponsaveis();
