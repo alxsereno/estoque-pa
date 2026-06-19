@@ -4254,74 +4254,92 @@ function imprimirRequisicaoPDF(){
   const totalUn=sel.reduce((s,r)=>s+r.qtdEnviar,0);
   const totalCx=sel.reduce((s,r)=>s+Math.ceil(r.qtdEnviar/r.unidCx),0);
 
-  const pa=document.getElementById('print-area');
-  pa.innerHTML=`
-  <div style="padding:20px;font-family:Arial,sans-serif;font-size:12px">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #000">
-      <div>
-        <div style="font-size:18px;font-weight:700">Requisição de Estoque</div>
-        <div style="font-size:14px;font-weight:600;margin-top:4px;color:#333">Loja: ${reqLojaAtiva}</div>
-        <div style="font-size:11px;color:#555;margin-top:4px">Emitido em: ${agora}</div>
-        <div style="font-size:11px;color:#555;margin-top:2px">${sel.length} itens · ${totalUn} unidades · ${totalCx} caixas</div>
-      </div>
-      <div style="font-size:11px;text-align:right;color:#888">
-        Simples e Natural<br>Controle de Estoque Central
-      </div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead>
-        <tr style="background:#1a1a18;color:#fff">
-          <th style="padding:7px 8px;text-align:left">#</th>
-          <th style="padding:7px 8px;text-align:left">Código</th>
-          <th style="padding:7px 8px;text-align:left">Produto</th>
-          <th style="padding:7px 8px;text-align:left">Categoria</th>
-          <th style="padding:7px 8px;text-align:center">Qtde (un)</th>
-          <th style="padding:7px 8px;text-align:center">Caixas</th>
-          <th style="padding:7px 8px;text-align:center;width:80px">Conferido ☐</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${sel.map((r,i)=>`
-        <tr style="background:${i%2===0?'#fff':'#f8f8f5'}">
-          <td style="padding:6px 8px;color:#888">${i+1}</td>
-          <td style="padding:6px 8px;font-family:monospace;color:#888">${r.cod}</td>
-          <td style="padding:6px 8px;font-weight:500">${r.descricao}</td>
-          <td style="padding:6px 8px;color:#555">${r.categoria}</td>
-          <td style="padding:6px 8px;text-align:center;font-weight:700">${r.qtdEnviar}</td>
-          <td style="padding:6px 8px;text-align:center">${Math.ceil(r.qtdEnviar/r.unidCx)}</td>
-          <td style="padding:6px 8px;text-align:center;font-size:16px">☐</td>
-        </tr>`).join('')}
-        <tr style="background:#1a1a18;color:#fff;font-weight:700">
-          <td colspan="4" style="padding:7px 8px">TOTAL</td>
-          <td style="padding:7px 8px;text-align:center">${totalUn}</td>
-          <td style="padding:7px 8px;text-align:center">${totalCx}</td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="margin-top:32px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;font-size:11px;color:#555">
-      <div>Solicitante: _______________________</div>
-      <div>Separado por: _____________________</div>
-      <div>Data entrega: _____________________</div>
-    </div>
-    <div style="margin-top:24px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#aaa;display:flex;justify-content:space-between">
-      <span>Simples e Natural — Controle de Estoque Central</span>
-      <span>Emitido: ${agora}</span>
-    </div>
-  </div>`;
+  const linhas=sel.map((r,i)=>`
+    <tr style="background:${i%2===0?'#fff':'#f8f8f5'}">
+      <td style="padding:6px 8px;color:#888;border:0.5px solid #e0e0e0">${i+1}</td>
+      <td style="padding:6px 8px;font-family:monospace;color:#555;border:0.5px solid #e0e0e0">${r.cod}</td>
+      <td style="padding:6px 8px;font-weight:500;border:0.5px solid #e0e0e0">${r.descricao}</td>
+      <td style="padding:6px 8px;color:#555;border:0.5px solid #e0e0e0">${r.categoria}</td>
+      <td style="padding:6px 8px;text-align:center;font-weight:700;border:0.5px solid #e0e0e0">${r.qtdEnviar}</td>
+      <td style="padding:6px 8px;text-align:center;border:0.5px solid #e0e0e0">${Math.ceil(r.qtdEnviar/r.unidCx)}</td>
+      <td style="padding:6px 8px;text-align:center;font-size:18px;border:0.5px solid #e0e0e0">☐</td>
+    </tr>`).join('');
 
-  document.body.classList.add('imprimindo-etiqueta');
-  function limpar(){
-    window.removeEventListener('afterprint',limpar);
-    pa.innerHTML='';
-    document.body.classList.remove('imprimindo-etiqueta');
-    // FIX: limpa tela após imprimir
-    setTimeout(()=>{
-      if(confirm('Impressão concluída. Limpar a requisição para o próximo usuário?')) limparRequisicao();
-    },300);
-  }
-  window.addEventListener('afterprint',limpar);
-  window.print();
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Requisição — ${reqLojaAtiva}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;background:#fff;padding:20px}
+    @media print{@page{size:A4;margin:12mm} .no-print{display:none}}
+    .btn-imp{padding:9px 22px;background:#1a1a18;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;margin-right:8px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#1a1a18;color:#fff;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+    th.center{text-align:center}
+  </style>
+  </head><body>
+  <div class="no-print" style="padding:12px 0 16px;display:flex;align-items:center;gap:10px">
+    <button class="btn-imp" onclick="window.print()">⎙ Imprimir / Salvar PDF</button>
+    <button onclick="window.close()" style="padding:9px 16px;background:#fff;border:1px solid #ddd;border-radius:7px;font-size:13px;cursor:pointer">Fechar</button>
+    <span style="font-size:12px;color:#888">Configure margens mínimas no diálogo de impressão</span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #000">
+    <div>
+      <div style="font-size:20px;font-weight:700">Requisição de Estoque</div>
+      <div style="font-size:14px;font-weight:600;margin-top:5px">Loja: ${reqLojaAtiva}</div>
+      <div style="font-size:11px;color:#555;margin-top:4px">Emitido em: ${agora}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">${sel.length} itens · ${totalUn} unidades · ${totalCx} caixas</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:#777">
+      <div style="font-weight:600;font-size:13px">Simples e Natural</div>
+      <div>Controle de Estoque Central</div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:30px">#</th>
+      <th style="width:70px">Código</th>
+      <th>Produto</th>
+      <th style="width:150px">Categoria</th>
+      <th class="center" style="width:70px">Qtde (un)</th>
+      <th class="center" style="width:60px">Caixas</th>
+      <th class="center" style="width:80px">Conferido</th>
+    </tr></thead>
+    <tbody>${linhas}</tbody>
+    <tfoot>
+      <tr style="background:#1a1a18;color:#fff;font-weight:700">
+        <td colspan="4" style="padding:8px">TOTAL — ${sel.length} itens</td>
+        <td style="padding:8px;text-align:center">${totalUn}</td>
+        <td style="padding:8px;text-align:center">${totalCx}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;font-size:12px">
+    <div>Solicitante: ___________________________<br><br></div>
+    <div>Separado por: _________________________<br><br></div>
+    <div>Data/Hora entrega: ____________________<br><br></div>
+  </div>
+
+  <div style="margin-top:20px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#aaa;display:flex;justify-content:space-between">
+    <span>Simples e Natural — Controle de Estoque Central</span>
+    <span>Emitido: ${agora}</span>
+  </div>
+  </body></html>`;
+
+  const janela=window.open('','_blank','width=900,height=700');
+  janela.document.write(html);
+  janela.document.close();
+
+  // Após fechar a janela, pergunta se quer limpar
+  const timer=setInterval(()=>{
+    if(janela.closed){
+      clearInterval(timer);
+      if(confirm('Limpar a requisição para o próximo usuário?')) limparRequisicao();
+    }
+  },500);
 }
 
 function limparRequisicao(){
