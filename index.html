@@ -1075,6 +1075,11 @@ tr:hover td{background:#fafaf7}
       <input type="file" id="req-file-input" accept=".xlsx,.xls" style="display:none"
         onchange="processarArquivoReq(this.files[0]);this.value=''">
     </div>
+    <div id="req-novo-estoque-btn" style="display:none;margin-top:10px">
+      <button class="btn" onclick="abrirNovoUploadReq()" style="width:100%;justify-content:center;gap:8px;padding:10px">
+        ↑ Carregar novo estoque da loja
+      </button>
+    </div>
     <div id="req-upload-status" style="display:none;margin-top:10px"></div>
   </div>
 
@@ -1133,7 +1138,8 @@ tr:hover td{background:#fafaf7}
         <div style="font-size:13px;color:#555" id="req-resumo-texto">Nenhum item selecionado.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn" onclick="exportarReqCSV()">↓ Exportar CSV</button>
-          <button class="btn btn-dark" onclick="imprimirRequisicaoPDF()">⎙ Gerar PDF</button>
+          <button class="btn" onclick="imprimirRelatorioEstoqueReq()">📋 Relatório de Estoque</button>
+          <button class="btn btn-dark" onclick="imprimirRequisicaoPDF()">⎙ Gerar PDF Requisição</button>
           <button class="btn btn-sm" onclick="limparRequisicao()" style="color:#c0392b;border-color:#fde8e8">✕ Cancelar</button>
         </div>
       </div>
@@ -4032,9 +4038,8 @@ function initRequisicao(){
 }
 
 function selecionarLojaReq(loja){
-  if(reqItens.length>0&&!confirm('Trocar de loja limpará os dados. Continuar?'))return;
+  // FIX 2: troca de loja SEM limpar os dados carregados
   reqLojaAtiva=loja;
-  limparRequisicao();
   Object.entries(REQ_LOJA_BTN_IDS).forEach(([l,id])=>{
     const btn=document.getElementById(id);if(!btn)return;
     const sel=l===loja;
@@ -4042,6 +4047,25 @@ function selecionarLojaReq(loja){
     btn.style.color=sel?'#fff':'#555';
     btn.style.borderColor=sel?'#1a1a18':'#ddd';
   });
+  // Se já tem dados carregados, re-processa com as configs da nova loja
+  if(reqItens.length>0){
+    // Re-aplica config da nova loja sobre os itens existentes
+    const cfgLoja=(cfgRequisicao&&cfgRequisicao[loja])||{};
+    reqItens.forEach(r=>{
+      const cfg=cfgLoja[r.categoria]||{minimo:16,loteMax:32};
+      r.minimo=cfg.minimo;
+      r.loteMax=cfg.loteMax;
+      const precisaEnvio=r.qtdeLoja<cfg.minimo;
+      if(r.saldoUn===0){r.status='zero';}
+      else if(precisaEnvio){r.status='enviar';r.sugestaoQtd=Math.min(cfg.loteMax,r.saldoUn);if(!r.selecionado)r.qtdEnviar=r.sugestaoQtd;r.selecionado=true;}
+      else{r.status='ok';r.selecionado=false;r.qtdEnviar=0;}
+    });
+    // Atualiza titulo
+    const tit=document.getElementById('req-titulo-resultado');
+    if(tit) tit.textContent=tit.textContent.replace(/—.*?·/,`— ${loja} ·`);
+    renderTabelaReq();
+    atualizarResumoReq();
+  }
 }
 
 async function processarArquivoReq(file){
@@ -4108,11 +4132,15 @@ function cruzarEstoques(estoqueLoja,nomeArquivo){
   Object.entries(estoqueLoja).forEach(([cod,qtdeLoja])=>{
     const central=mapCentral[cod];
     if(!central){ignorados++;return;}
+    const prodInfo=mapProd[cod];
+    const saldoUn=central.unCompletas+central.unParciais;
+    const inativo=prodInfo&&prodInfo.ativo===false;
+    // FIX 1: só ignora quando INATIVO *E* saldo zero no central
+    if(inativo&&saldoUn===0){ignorados++;return;}
     cruzados++;
     const cat=central.categoria;
     const cfg=cfgLoja[cat]||{minimo:16,loteMax:32};
-    const saldoUn=central.unCompletas+central.unParciais;
-    const unidCx=mapProd[cod]?.unid_cx||16;
+    const unidCx=prodInfo?.unid_cx||16;
     const precisaEnvio=qtdeLoja<cfg.minimo;
     const temSaldo=saldoUn>0;
     let statusReq,sugestaoQtd;
@@ -4123,7 +4151,7 @@ function cruzarEstoques(estoqueLoja,nomeArquivo){
       cod,descricao:central.descricao,categoria:cat,
       qtdeLoja,minimo:cfg.minimo,saldoUn,loteMax:cfg.loteMax,
       sugestaoQtd,qtdEnviar:statusReq==='enviar'?sugestaoQtd:0,
-      selecionado:statusReq==='enviar',status:statusReq,unidCx
+      selecionado:statusReq==='enviar',status:statusReq,unidCx,inativo
     });
   });
 
@@ -4142,6 +4170,9 @@ function cruzarEstoques(estoqueLoja,nomeArquivo){
   selCat.innerHTML='<option value="">Todas categorias</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
 
   document.getElementById('req-resultado-area').style.display='block';
+  // FIX 2: esconde drop area e mostra botão "Carregar novo"
+  document.getElementById('req-drop-area').style.display='none';
+  document.getElementById('req-novo-estoque-btn').style.display='block';
   renderTabelaReq();
   atualizarResumoReq();
 }
@@ -4172,6 +4203,7 @@ function renderTabelaReq(){
       :r.status==='ok'
         ?'<span class="badge badge-ok">✓ OK</span>'
         :'<span class="badge badge-warn">↑ Enviar</span>';
+    const inativoBadge=r.inativo?'<span style="background:#fde8e8;color:#c0392b;font-size:10px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:5px">Inativo</span>':'';
     const check=zero
       ?'<input type="checkbox" disabled style="opacity:.3">'
       :`<input type="checkbox" ${r.selecionado?'checked':''} onchange="toggleReqItem(${idx},this.checked)">`;
@@ -4179,12 +4211,13 @@ function renderTabelaReq(){
     const caixas=enviar&&r.qtdEnviar>0?Math.ceil(r.qtdEnviar/r.unidCx)+' cx':'—';
     const qtdInput=enviar
       ?`<input type="number" class="ajuste-input" min="1" max="${r.loteMax}" value="${r.qtdEnviar}"
+          onkeydown="return ['ArrowUp','ArrowDown','Tab'].includes(event.key)"
           onchange="atualizarQtdReq(${idx},this.value)" style="width:68px;text-align:center">`
       :'<span style="color:#bbb">—</span>';
     return`<tr style="${zero?'opacity:.5':''}">
       <td style="text-align:center">${check}</td>
       <td style="font-family:monospace;font-size:11px;color:#888">${r.cod}</td>
-      <td style="font-size:12px${enviar?';font-weight:500':''}">${r.descricao}</td>
+      <td style="font-size:12px${enviar?';font-weight:500':''}">${r.descricao}${inativoBadge}</td>
       <td style="font-size:11px;color:#888">${r.categoria}</td>
       <td style="text-align:center">${r.qtdeLoja}</td>
       <td style="text-align:center;color:#888">${r.minimo}</td>
@@ -4342,12 +4375,117 @@ function imprimirRequisicaoPDF(){
   },500);
 }
 
+function imprimirRelatorioEstoqueReq(){
+  if(!reqItens.length){toast('Carregue o estoque da loja primeiro');return;}
+  const agora=new Date().toLocaleString('pt-BR');
+  // Filtra apenas os visíveis (sem zero, sem inativos)
+  const itens=reqItens.filter(r=>r.status!=='zero').sort((a,b)=>a.categoria.localeCompare(b.categoria)||a.descricao.localeCompare(b.descricao));
+  const totalLojaUn=itens.reduce((s,r)=>s+r.qtdeLoja,0);
+  const totalCentralUn=itens.reduce((s,r)=>s+r.saldoUn,0);
+
+  const linhas=itens.map((r,i)=>{
+    const status=r.status==='enviar'
+      ?'<span style="background:#fff8e1;color:#b8860b;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">↑ ENVIAR</span>'
+      :'<span style="background:#e6f4ea;color:#1e7e34;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600">✓ OK</span>';
+    const abaixoMin=r.qtdeLoja<r.minimo;
+    return`<tr style="background:${i%2===0?'#fff':'#f8f8f5'}">
+      <td style="padding:5px 7px;font-family:monospace;font-size:10px;color:#888;border:0.5px solid #e0e0e0">${r.cod}</td>
+      <td style="padding:5px 7px;font-size:11px;border:0.5px solid #e0e0e0">${r.descricao}</td>
+      <td style="padding:5px 7px;font-size:10px;color:#555;border:0.5px solid #e0e0e0">${r.categoria}</td>
+      <td style="padding:5px 7px;text-align:center;font-weight:${abaixoMin?'700':'400'};color:${abaixoMin?'#c0392b':'inherit'};border:0.5px solid #e0e0e0">${r.qtdeLoja}</td>
+      <td style="padding:5px 7px;text-align:center;color:#888;border:0.5px solid #e0e0e0">${r.minimo}</td>
+      <td style="padding:5px 7px;text-align:center;font-weight:600;color:${r.saldoUn>r.loteMax?'#1e7e34':'#1a56db'};border:0.5px solid #e0e0e0">${r.saldoUn}</td>
+      <td style="padding:5px 7px;text-align:center;color:#888;border:0.5px solid #e0e0e0">${r.loteMax}</td>
+      <td style="padding:5px 7px;text-align:center;border:0.5px solid #e0e0e0">${status}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Relatório de Estoque — ${reqLojaAtiva}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;background:#fff;padding:20px}
+    @media print{@page{size:A4 landscape;margin:10mm} .no-print{display:none}}
+    .btn-imp{padding:9px 22px;background:#1a1a18;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;margin-right:8px}
+    table{width:100%;border-collapse:collapse}
+    th{background:#1a1a18;color:#fff;padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+    th.center{text-align:center}
+    .legenda{display:inline-flex;align-items:center;gap:6px;font-size:11px;margin-right:16px}
+  </style>
+  </head><body>
+  <div class="no-print" style="padding:12px 0 16px;display:flex;align-items:center;gap:10px">
+    <button class="btn-imp" onclick="window.print()">⎙ Imprimir / Salvar PDF</button>
+    <button onclick="window.close()" style="padding:9px 16px;background:#fff;border:1px solid #ddd;border-radius:7px;font-size:13px;cursor:pointer">Fechar</button>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #000">
+    <div>
+      <div style="font-size:18px;font-weight:700">Relatório de Estoque</div>
+      <div style="font-size:13px;font-weight:600;margin-top:4px">Loja: ${reqLojaAtiva} &nbsp;·&nbsp; Estoque Central</div>
+      <div style="font-size:11px;color:#555;margin-top:3px">Emitido em: ${agora}</div>
+      <div style="font-size:11px;color:#555;margin-top:2px">${itens.length} produtos · Total loja: ${totalLojaUn} un · Total central: ${totalCentralUn} un</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:#777">
+      <div style="font-weight:600;font-size:13px">Simples e Natural</div>
+      <div>Controle de Estoque Central</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px 0">
+    <span class="legenda"><span style="background:#fff8e1;color:#b8860b;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600">↑ ENVIAR</span> Abaixo do mínimo</span>
+    <span class="legenda"><span style="background:#e6f4ea;color:#1e7e34;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600">✓ OK</span> Estoque suficiente</span>
+    <span class="legenda" style="color:#c0392b">Qtde loja em vermelho = abaixo do mínimo</span>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th style="width:65px">Código</th>
+      <th>Produto</th>
+      <th style="width:140px">Categoria</th>
+      <th class="center" style="width:70px">Qtde Loja</th>
+      <th class="center" style="width:65px">Mínimo</th>
+      <th class="center" style="width:80px">Saldo Central</th>
+      <th class="center" style="width:70px">Lote Máx.</th>
+      <th class="center" style="width:80px">Status</th>
+    </tr></thead>
+    <tbody>${linhas}</tbody>
+    <tfoot>
+      <tr style="background:#1a1a18;color:#fff;font-weight:700">
+        <td colspan="3" style="padding:7px 8px">TOTAL — ${itens.length} produtos</td>
+        <td style="padding:7px 8px;text-align:center">${totalLojaUn}</td>
+        <td></td>
+        <td style="padding:7px 8px;text-align:center">${totalCentralUn}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div style="margin-top:16px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#aaa;display:flex;justify-content:space-between">
+    <span>Simples e Natural — Controle de Estoque Central</span>
+    <span>Emitido: ${agora}</span>
+  </div>
+  </body></html>`;
+
+  const janela=window.open('','_blank','width=1100,height=750');
+  janela.document.write(html);
+  janela.document.close();
+}
+
 function limparRequisicao(){
   reqItens=[];
   document.getElementById('req-resultado-area').style.display='none';
   document.getElementById('req-upload-status').style.display='none';
   document.getElementById('req-upload-status').innerHTML='';
+  document.getElementById('req-drop-area').style.display='block';
+  document.getElementById('req-novo-estoque-btn').style.display='none';
   const fa=document.getElementById('req-file-input');if(fa)fa.value='';
+}
+
+function abrirNovoUploadReq(){
+  if(!confirm('Carregar novo estoque vai substituir os dados atuais. Continuar?'))return;
+  // Mantém a loja selecionada, limpa só os dados
+  limparRequisicao();
+  setTimeout(()=>document.getElementById('req-file-input').click(),100);
 }
 
 // =====================================================================
