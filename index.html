@@ -4046,7 +4046,8 @@ function getReqItens(){ return reqDadosPorLoja[reqLojaAtiva]||[]; }
 function setReqItens(itens){ reqDadosPorLoja[reqLojaAtiva]=itens; }
 
 function initRequisicao(){
-  // Tela sempre limpa ao abrir
+  // Ao entrar na tela, renderiza o estado da loja ativa
+  selecionarLojaReq(reqLojaAtiva);
 }
 
 function selecionarLojaReq(loja){
@@ -4059,19 +4060,28 @@ function selecionarLojaReq(loja){
     btn.style.color=sel?'#fff':'#555';
     btn.style.borderColor=sel?'#1a1a18':'#ddd';
   });
-  // FIX 1: mostra dados só se esta loja tem arquivo carregado
+  // Só manipula o DOM da tela se ela estiver visível/ativa
+  const telaAtiva=document.getElementById('screen-requisicao')?.classList.contains('active');
+  if(!telaAtiva) return; // a tela ainda não foi aberta, não há elementos para manipular
+
   const temDados=(reqDadosPorLoja[loja]||[]).length>0;
-  document.getElementById('req-resultado-area').style.display=temDados?'block':'none';
-  document.getElementById('req-drop-area').style.display=temDados?'none':'block';
-  document.getElementById('req-novo-estoque-btn').style.display=temDados?'block':'none';
-  document.getElementById('req-upload-status').style.display='none';
+  const elResultado=document.getElementById('req-resultado-area');
+  const elDrop=document.getElementById('req-drop-area');
+  const elNovo=document.getElementById('req-novo-estoque-btn');
+  const elStatus=document.getElementById('req-upload-status');
+  if(elResultado) elResultado.style.display=temDados?'block':'none';
+  if(elDrop)      elDrop.style.display=temDados?'none':'block';
+  if(elNovo)      elNovo.style.display=temDados?'block':'none';
+  if(elStatus)    elStatus.style.display='none';
   if(temDados){
     const nomeArq=reqDadosPorLoja[loja+'__arquivo']||loja;
-    document.getElementById('req-titulo-resultado').textContent=`Resultado — ${loja} · ${nomeArq}`;
-    document.getElementById('req-data-leitura').textContent=reqDadosPorLoja[loja+'__data']||'';
+    const elTit=document.getElementById('req-titulo-resultado');
+    const elData=document.getElementById('req-data-leitura');
+    if(elTit)  elTit.textContent=`Resultado — ${loja} · ${nomeArq}`;
+    if(elData) elData.textContent=reqDadosPorLoja[loja+'__data']||'';
     const cats=[...new Set(getReqItens().map(i=>i.categoria))].sort();
     const selCat=document.getElementById('req-filtro-cat');
-    selCat.innerHTML='<option value="">Todas categorias</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    if(selCat) selCat.innerHTML='<option value="">Todas categorias</option>'+cats.map(c=>`<option value="${c}">${c}</option>`).join('');
     renderTabelaReq();atualizarResumoReq();
   }
 }
