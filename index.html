@@ -577,11 +577,42 @@ tr:hover td{background:#fafaf7}
   <h1>Histórico</h1>
   <p class="sub">Todas as movimentações registradas</p>
   <div class="card">
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      <div class="search-wrap" style="flex:1;min-width:180px">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="hist-filtro-produto" placeholder="Buscar produto ou lote..."
+          oninput="renderHistorico()" style="padding-left:34px">
+      </div>
+      <select id="hist-filtro-tipo" onchange="renderHistorico()" style="max-width:180px">
+        <option value="">Todos os tipos</option>
+        <option value="ENTRADA">Entrada</option>
+        <option value="SAÍDA TOTAL">Saída total</option>
+        <option value="SAÍDA PARCIAL">Saída parcial</option>
+        <option value="RESÍDUO GERADO">Resíduo gerado</option>
+        <option value="AJUSTE">Ajuste</option>
+      </select>
+      <button class="btn btn-sm" onclick="limparFiltrosHistorico()" style="white-space:nowrap">Limpar</button>
+      <button class="btn btn-sm" onclick="exportarHistoricoExcel()" style="color:#1a56db;border-color:#e8f0fe;white-space:nowrap">↓ Excel</button>
+    </div>
+    <div id="hist-count" style="font-size:12px;color:#888;margin-bottom:10px"></div>
     <table>
-      <thead><tr><th>Data/Hora</th><th>Tipo</th><th>Produto</th><th>Lote</th><th>Quantidade</th><th>Destino/Origem</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Data/Hora</th>
+          <th>Tipo</th>
+          <th>Produto</th>
+          <th>Lote</th>
+          <th>Quantidade</th>
+          <th>Destino/Origem</th>
+          <th>Prod.</th>
+          <th>Validade</th>
+          <th>Semana</th>
+          <th>Local</th>
+        </tr>
+      </thead>
       <tbody id="tabela-hist"></tbody>
     </table>
-    <div id="hist-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhuma movimentação registrada.</div>
+    <div id="hist-empty" style="display:none;color:#bbb;padding:20px 0;font-size:13px;text-align:center">Nenhuma movimentação encontrada.</div>
   </div>
 </div>
 
@@ -2038,8 +2069,15 @@ function renderEtiqPreview(emb){
       padding:6px;font-family:Arial,sans-serif;font-size:8px;position:relative;overflow:hidden;background:#fff;box-sizing:border-box;display:flex;flex-direction:column;gap:3px">
 
     <!-- Cabeçalho -->
-    <div style="font-size:7px;font-weight:700;color:#888;letter-spacing:.06em;border-bottom:1px solid #ddd;padding-bottom:3px">
-      SIMPLES E NATURAL — PRODUTO ACABADO
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding-bottom:3px">
+      <div style="font-size:7px;font-weight:700;color:#888;letter-spacing:.06em">
+        SIMPLES E NATURAL — PRODUTO ACABADO
+      </div>
+      <div style="font-family:monospace;font-size:7px;font-weight:700;color:#000;
+        background:#f0f0f0;border:0.5px solid #ccc;border-radius:3px;padding:1px 4px;
+        white-space:nowrap;flex-shrink:0;margin-left:4px">
+        ${emb.codigo}
+      </div>
     </div>
 
     <!-- Nome do produto -->
@@ -2102,9 +2140,16 @@ function gerarHTMLEtiqueta(emb){
     padding:5px 7px;font-family:Arial,sans-serif;
     display:flex;flex-direction:column;gap:2px;overflow:hidden;page-break-inside:avoid">
 
-    <div style="font-size:8px;font-weight:700;color:#555;letter-spacing:.06em;
-      border-bottom:1px solid #bbb;padding-bottom:2px;text-transform:uppercase">
-      SIMPLES E NATURAL — PRODUTO ACABADO
+    <div style="display:flex;justify-content:space-between;align-items:center;
+      border-bottom:1px solid #bbb;padding-bottom:2px">
+      <div style="font-size:7px;font-weight:700;color:#555;letter-spacing:.06em;text-transform:uppercase">
+        SIMPLES E NATURAL — PRODUTO ACABADO
+      </div>
+      <div style="font-family:monospace;font-size:8px;font-weight:700;color:#000;
+        background:#f0f0f0;border:0.5px solid #ccc;border-radius:3px;padding:1px 5px;
+        white-space:nowrap;flex-shrink:0;margin-left:6px">
+        ${emb.codigo}
+      </div>
     </div>
 
     <div style="font-size:14px;font-weight:700;line-height:1.2;color:#000">
@@ -2942,18 +2987,107 @@ function imprimirSaldoEstoque(){
 }
 
 function renderHistorico(){
-  const tbody=document.getElementById('tabela-hist'),empty=document.getElementById('hist-empty');
-  if(!movs.length){tbody.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
-  const ts={'ENTRADA':'badge-ok','SAÍDA TOTAL':'badge-info','SAÍDA PARCIAL':'badge-warn','RESÍDUO GERADO':'badge-gray','AJUSTE':'badge-gray'};
-  tbody.innerHTML=[...movs].reverse().map(m=>`<tr>
-    <td style="color:#888;font-size:12px">${m.data}</td>
-    <td><span class="badge ${ts[m.tipo]||'badge-gray'}" style="white-space:nowrap">${m.tipo}</span></td>
-    <td>${m.produto}</td>
-    <td><span class="emb-tag" style="font-size:10px">${m.codigo}</span></td>
-    <td style="font-weight:500">${m.quantidade}</td>
-    <td style="color:#888">${m.destino}</td>
-  </tr>`).join('');
+  const tbody=document.getElementById('tabela-hist');
+  const empty=document.getElementById('hist-empty');
+  const count=document.getElementById('hist-count');
+  const busca=(document.getElementById('hist-filtro-produto')?.value||'').toLowerCase();
+  const tipo =document.getElementById('hist-filtro-tipo')?.value||'';
+
+  if(!movs.length){tbody.innerHTML='';empty.style.display='block';if(count)count.textContent='';return;}
+
+  const ts={
+    'ENTRADA':'badge-ok','SAÍDA TOTAL':'badge-info',
+    'SAÍDA PARCIAL':'badge-warn','RESÍDUO GERADO':'badge-gray','AJUSTE':'badge-gray'
+  };
+
+  // Mapa de embalagens por código para buscar detalhes do lote
+  const mapEmb={};
+  embalagens.forEach(e=>{ mapEmb[e.codigo]=e; });
+
+  const filtrados=[...movs].reverse().filter(m=>{
+    if(tipo && m.tipo!==tipo) return false;
+    if(busca && !m.produto.toLowerCase().includes(busca) &&
+       !String(m.codigo||'').toLowerCase().includes(busca) &&
+       !String(m.lote||'').toLowerCase().includes(busca)) return false;
+    return true;
+  });
+
+  empty.style.display = filtrados.length?'none':'block';
+  empty.textContent = 'Nenhuma movimentação encontrada com os filtros selecionados.';
+  if(count) count.textContent = filtrados.length+' de '+movs.length+' movimentações';
+  if(!filtrados.length){tbody.innerHTML='';return;}
+
+  tbody.innerHTML=filtrados.map(m=>{
+    // Busca detalhes do lote — funciona tanto para entradas quanto saídas
+    const emb=mapEmb[m.codigo]||mapEmb[m.lote]||null;
+    const prodFmt = emb?.data_producao ? new Date(emb.data_producao+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    const valFmt  = emb?.data_validade ? new Date(emb.data_validade+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+    const sem     = emb?.semana_producao || '—';
+    const local   = emb?.local || '—';
+    const valCor  = emb?.data_validade ? (calcStatus(emb.data_validade)==='VENCIDO'?'color:#c0392b;font-weight:600':'') : '';
+    return `<tr>
+      <td style="color:#888;font-size:11px;white-space:nowrap">${m.data}</td>
+      <td><span class="badge ${ts[m.tipo]||'badge-gray'}" style="white-space:nowrap;font-size:11px">${m.tipo}</span></td>
+      <td style="font-size:12px">${m.produto}</td>
+      <td><span class="emb-tag" style="font-size:10px">${m.codigo}</span></td>
+      <td style="font-weight:500;font-size:12px">${m.quantidade}</td>
+      <td style="color:#888;font-size:12px">${m.destino}</td>
+      <td style="font-size:11px;color:#555">${prodFmt}</td>
+      <td style="font-size:11px;${valCor}">${valFmt}</td>
+      <td style="font-size:11px;text-align:center">${sem}</td>
+      <td style="font-size:11px;color:#888">${local}</td>
+    </tr>`;
+  }).join('');
+}
+
+function limparFiltrosHistorico(){
+  const bp=document.getElementById('hist-filtro-produto');
+  const bt=document.getElementById('hist-filtro-tipo');
+  if(bp) bp.value='';
+  if(bt) bt.value='';
+  renderHistorico();
+}
+
+function exportarHistoricoExcel(){
+  if(!movs.length){toast('Nenhuma movimentação para exportar');return;}
+  if(typeof XLSX==='undefined'){toast('Biblioteca não carregada');return;}
+
+  const mapEmb={};
+  embalagens.forEach(e=>{ mapEmb[e.codigo]=e; });
+
+  const busca=(document.getElementById('hist-filtro-produto')?.value||'').toLowerCase();
+  const tipo =document.getElementById('hist-filtro-tipo')?.value||'';
+  const filtrados=[...movs].reverse().filter(m=>{
+    if(tipo && m.tipo!==tipo) return false;
+    if(busca && !m.produto.toLowerCase().includes(busca) &&
+       !String(m.codigo||'').toLowerCase().includes(busca)) return false;
+    return true;
+  });
+
+  const rows=filtrados.map(m=>{
+    const emb=mapEmb[m.codigo]||mapEmb[m.lote]||null;
+    return {
+      'Data/Hora':   m.data,
+      'Tipo':        m.tipo,
+      'Produto':     m.produto,
+      'Lote':        m.codigo,
+      'Quantidade':  m.quantidade,
+      'Destino/Origem': m.destino,
+      'Produção':    emb?.data_producao ? new Date(emb.data_producao+'T12:00:00').toLocaleDateString('pt-BR') : '',
+      'Validade':    emb?.data_validade ? new Date(emb.data_validade+'T12:00:00').toLocaleDateString('pt-BR') : '',
+      'Semana':      emb?.semana_producao||'',
+      'Local':       emb?.local||''
+    };
+  });
+
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.json_to_sheet(rows);
+  // Largura das colunas
+  ws['!cols']=[{wch:18},{wch:14},{wch:50},{wch:20},{wch:12},{wch:25},{wch:12},{wch:12},{wch:8},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,'Histórico',ws);
+  const nome='historico_'+new Date().toISOString().slice(0,10)+'.xlsx';
+  XLSX.writeFile(wb,nome);
+  toast('Excel exportado: '+nome);
 }
 
 // =====================================================================
