@@ -152,10 +152,10 @@ tr:hover td{background:#fafaf7}
   </div>
   <nav>
     <div class="nav-section">Operações</div>
-    <div class="nav-item active" onclick="show('entrada')" id="nav-entrada"><span class="nav-icon">↑</span> Entrada</div>
+    <div class="nav-item active" onclick="show('dashboard')" id="nav-dashboard"><span class="nav-icon">▦</span> Dashboard</div>
+    <div class="nav-item" onclick="show('entrada')" id="nav-entrada"><span class="nav-icon">↑</span> Entrada</div>
     <div class="nav-item" onclick="show('etiqueta')" id="nav-etiqueta"><span class="nav-icon">⊟</span> Etiquetas</div>
     <div class="nav-item" onclick="show('saida')" id="nav-saida"><span class="nav-icon">↓</span> Saída</div>
-    <div class="nav-item" onclick="show('dashboard')" id="nav-dashboard"><span class="nav-icon">▦</span> Dashboard</div>
     <div class="nav-item" onclick="show('historico')" id="nav-historico"><span class="nav-icon">≡</span> Histórico</div>
     <div class="nav-section">Gestão</div>
     <div class="nav-item" onclick="show('relatorio')" id="nav-relatorio"><span class="nav-icon">⎙</span> Relatório</div>
@@ -173,7 +173,7 @@ tr:hover td{background:#fafaf7}
 <main class="content">
 
 <!-- ===== ENTRADA ===== -->
-<div id="screen-entrada" class="screen active">
+<div id="screen-entrada" class="screen">
   <h1>Entrada de Produto</h1>
   <p class="sub">Registre a produção de marmitas na estoque central</p>
 
@@ -519,11 +519,12 @@ tr:hover td{background:#fafaf7}
 </div><!-- screen-saida -->
 
 <!-- ===== DASHBOARD ===== -->
-<div id="screen-dashboard" class="screen">
+<div id="screen-dashboard" class="screen active">
   <h1>Dashboard</h1>
   <p class="sub">Visão geral do estoque da estoque central</p>
 
   <div class="grid4" style="margin-bottom:20px" id="metrics-cards"></div>
+  <div class="grid2" style="margin-bottom:20px" id="metrics-cards-hoje"></div>
 
   <div class="grid2">
     <div class="card">
@@ -1574,6 +1575,17 @@ let acResults    = [];
 let impressoraOk = false;
 let impressoraNome = null;
 
+// Contadores globais e monotônicos para gerar ids de lote/embalagem.
+// NUNCA usar array.length+1 para isso — assim que qualquer item é removido
+// do meio do array (limpeza de histórico, correção manual no banco, etc.),
+// o próximo array.length+1 passa a colidir com o id de um item mais antigo
+// que ainda existe, e buscas por id (embalagens.find(x=>x.id===id)) passam
+// a devolver o item errado.
+let nextLoteId = 1;
+let nextEmbId  = 1;
+function gerarLoteId(){ return nextLoteId++; }
+function gerarEmbId(){ return nextEmbId++; }
+
 let cfgEtiqueta  = {larguraMm:100, alturaMm:60, dpi:203};
 let cfgValidade  = {critico:7, atencao:30};
 let cfgResponsaveis = []; // lista de nomes cadastrados
@@ -1589,7 +1601,7 @@ async function salvarAuto(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async () => {
     try{
-      const payload = {lotes, embalagens, movs, ajustes, savedAt: new Date().toISOString()};
+      const payload = {lotes, embalagens, movs, ajustes, nextLoteId, nextEmbId, savedAt: new Date().toISOString()};
       await fetch('/api/data/' + LS_KEY, {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
@@ -1613,8 +1625,59 @@ async function carregarDados(){
     const d = json.value;
     lotes = d.lotes||[]; embalagens = d.embalagens||[];
     movs = d.movs||[]; ajustes = d.ajustes||[];
+
+    // Restaura os contadores de id. Se não existirem (dados salvos antes
+    // dessa correção), ou se por algum motivo estiverem menores que o
+    // maior id já em uso, recalcula a partir do maior id existente — nunca
+    // deixa o contador ficar abaixo de um id que já está em uso.
+    const maxLoteId = lotes.reduce((m,l)=>Math.max(m,l.id||0),0);
+    const maxEmbId  = embalagens.reduce((m,e)=>Math.max(m,e.id||0),0);
+    nextLoteId = Math.max(d.nextLoteId||0, maxLoteId+1, 1);
+    nextEmbId  = Math.max(d.nextEmbId ||0, maxEmbId +1, 1);
+
+    // Repara automaticamente qualquer id duplicado que já exista nos dados
+    // salvos (pode ter sido gerado antes dessa correção). Só salva de volta
+    // se algo foi realmente corrigido.
+    const rep = repararIdsDuplicados();
+    if(rep.lotesCorrigidos>0 || rep.embsCorrigidas>0){
+      console.warn('IDs duplicados corrigidos automaticamente:', rep);
+      salvarAuto();
+    }
+
     return d.savedAt;
   }catch(e){ console.warn('Erro ao carregar:', e); return null; }
+}
+
+// Reatribui um novo id único a qualquer lote/embalagem cujo id colida com
+// o de um item anterior no array, atualizando as referências (lote_id em
+// embalagens, 'Grupo <id>' em movs). Idempotente: rodar de novo sem
+// duplicatas não muda nada. Retorna quantos itens de cada tipo foram corrigidos.
+function repararIdsDuplicados(){
+  let lotesCorrigidos = 0, embsCorrigidas = 0;
+
+  const vistosLote = new Set();
+  lotes.forEach(l=>{
+    if(vistosLote.has(l.id)){
+      const idAntigo = l.id;
+      const idNovo = gerarLoteId();
+      embalagens.forEach(e=>{ if(e.lote_id===idAntigo) e.lote_id=idNovo; });
+      movs.forEach(m=>{ if(m.lote==='Grupo '+idAntigo) m.lote='Grupo '+idNovo; });
+      l.id = idNovo;
+      lotesCorrigidos++;
+    }
+    vistosLote.add(l.id);
+  });
+
+  const vistosEmb = new Set();
+  embalagens.forEach(e=>{
+    if(vistosEmb.has(e.id)){
+      e.id = gerarEmbId();
+      embsCorrigidas++;
+    }
+    vistosEmb.add(e.id);
+  });
+
+  return {lotesCorrigidos, embsCorrigidas};
 }
 
 async function carregarConfig(){
@@ -2057,7 +2120,7 @@ function irStep3(){
   const semana=getWeekNumber(new Date(dataProd+'T12:00:00'));
 
   const loteGrupo={
-    id:lotes.length+1,
+    id:gerarLoteId(),
     produto_id:prodSel.codigo,
     produto_descricao:prodSel.descricao,
     categoria:prodSel.categoria,
@@ -2080,7 +2143,7 @@ function irStep3(){
   for(let i=0;i<cx;i++){
     const cod=gerarCodigoLote(prodSel.codigo,seq,false);
     const emb={
-      id:embalagens.length+1,codigo:cod,lote_id:loteGrupo.id,
+      id:gerarEmbId(),codigo:cod,lote_id:loteGrupo.id,
       produto_id:prodSel.codigo,produto_descricao:prodSel.descricao,
       categoria:prodSel.categoria,unid_cx:upx,quantidade:upx,quantidade_atual:upx,
       data_producao:dataProd,data_validade:val,semana_producao:semana,
@@ -2091,7 +2154,7 @@ function irStep3(){
   if(av>0){
     const cod=gerarCodigoLote(prodSel.codigo,seq,true);
     const emb={
-      id:embalagens.length+1,codigo:cod,lote_id:loteGrupo.id,
+      id:gerarEmbId(),codigo:cod,lote_id:loteGrupo.id,
       produto_id:prodSel.codigo,produto_descricao:prodSel.descricao,
       categoria:prodSel.categoria,unid_cx:upx,quantidade:av,quantidade_atual:av,
       data_producao:dataProd,data_validade:val,semana_producao:semana,
@@ -2755,7 +2818,7 @@ function confirmarSaida(){
 
     // Monta resíduo herdando tudo da origem — semana é sempre da produção original
     novaEmb = {
-      id:               embalagens.length + 1,
+      id:               gerarEmbId(),
       codigo:           codResiduo,
       lote_id:          origem.lote_id,
       produto_id:       origem.produto_id,
@@ -2854,6 +2917,29 @@ function novaSaida(){
 // =====================================================================
 // DASHBOARD
 // =====================================================================
+// Soma caixas/marmitas entradas e saídas registradas hoje, a partir do Histórico (movs).
+// ENTRADA: cada mov já representa o lançamento inteiro ("112 unid / 7 cx").
+// SAÍDA TOTAL/PARCIAL: cada mov representa uma caixa (1 cx), com "N unid".
+function metricsMovimentacaoHoje(){
+  const hojeStr = new Date().toLocaleDateString('pt-BR');
+  let entradaCx=0, entradaUn=0, saidaCx=0, saidaUn=0;
+  movs.forEach(m=>{
+    const dataMov = String(m.data||'').split(',')[0].trim();
+    if(dataMov!==hojeStr) return;
+    const qtd = String(m.quantidade||'');
+    const mUn = qtd.match(/(\d+)\s*unid/);
+    if(m.tipo==='ENTRADA'){
+      const mCx = qtd.match(/(\d+)\s*cx/);
+      if(mUn) entradaUn += parseInt(mUn[1],10);
+      if(mCx) entradaCx += parseInt(mCx[1],10);
+    } else if(m.tipo==='SAÍDA TOTAL' || m.tipo==='SAÍDA PARCIAL'){
+      if(mUn) saidaUn += parseInt(mUn[1],10);
+      saidaCx += 1;
+    }
+  });
+  return {entradaCx, entradaUn, saidaCx, saidaUn};
+}
+
 function renderDashboard(){
   const disp=embalagens.filter(e=>e.status==='disponivel');
   const venc=disp.filter(e=>calcStatus(e.data_validade)==='VENCIDO').length;
@@ -2871,6 +2957,11 @@ function renderDashboard(){
     <div class="metric"><div class="metric-lbl">Por câmara</div><div style="margin-top:6px">${camarasHtml||'<span style="color:#bbb;font-size:12px">Sem dados</span>'}</div></div>
     <div class="metric"><div class="metric-lbl">Críticos (${cfgValidade.critico} dias)</div><div class="metric-val" style="color:${crit>0?'#b8860b':'inherit'}">${crit}</div><div class="metric-sub">caixas</div></div>
     <div class="metric"><div class="metric-lbl">Vencidos</div><div class="metric-val" style="color:${venc>0?'#c0392b':'inherit'}">${venc}</div><div class="metric-sub">requer ação</div></div>`;
+  // Entrada/Saída do dia
+  const movHoje = metricsMovimentacaoHoje();
+  document.getElementById('metrics-cards-hoje').innerHTML=`
+    <div class="metric"><div class="metric-lbl">Entrada hoje</div><div class="metric-val" style="color:#1e7e34">${movHoje.entradaCx} cx</div><div class="metric-sub">${movHoje.entradaUn} marmitas</div></div>
+    <div class="metric"><div class="metric-lbl">Saída hoje</div><div class="metric-val" style="color:#b8860b">${movHoje.saidaCx} cx</div><div class="metric-sub">${movHoje.saidaUn} marmitas</div></div>`;
   // Por categoria
   const cats={};
   disp.forEach(e=>{if(!cats[e.categoria])cats[e.categoria]={cx:0,un:0};cats[e.categoria].cx++;cats[e.categoria].un+=e.quantidade_atual;});
@@ -4811,7 +4902,7 @@ function fazerLogin(){
   // Mostra nome na sidebar
   const ind = document.getElementById('save-indicator');
   if(ind){ ind.textContent = '● '+u.nome+(u.perfil==='admin'?' (Admin)':''); ind.style.opacity='.7'; }
-  setTimeout(()=>document.getElementById('busca').focus(), 100);
+  show('dashboard');
 }
 
 function aplicarPerfil(){
