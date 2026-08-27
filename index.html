@@ -261,7 +261,7 @@ tr:hover td{background:#fafaf7}
       <div class="grid3" style="margin-bottom:16px">
         <div class="field">
           <label>Qtd de caixas completas *</label>
-          <input type="number" id="ei-caixas" min="0" placeholder="0" oninput="calcResumoEntrada()">
+          <input type="number" id="ei-caixas" min="0" max="100" placeholder="0" oninput="calcResumoEntrada()">
         </div>
         <div class="field">
           <label>Unidades por caixa</label>
@@ -1058,6 +1058,30 @@ tr:hover td{background:#fafaf7}
     </div>
   </div>
 
+  <!-- LIMPEZA DE HISTÓRICO ANTIGO -->
+  <div class="card" style="border:1.5px solid #fde8e8">
+    <div class="card-title" style="color:#c0392b">Limpeza de histórico antigo</div>
+    <p style="font-size:12px;color:#888;margin-bottom:16px">
+      Apaga do banco de dados os lotes <strong>já 100% consumidos</strong> (nenhuma caixa em estoque) há mais tempo do que o
+      período escolhido, junto com as movimentações e ajustes ligados a eles no Histórico. Lotes com qualquer caixa ainda
+      disponível em estoque <strong>nunca</strong> são apagados — só o que já saiu do sistema.<br>
+      <strong style="color:#c0392b">Esta ação não pode ser desfeita.</strong> Exporte um backup (acima) antes de prosseguir.
+    </p>
+    <div class="field" style="max-width:280px;margin-bottom:14px">
+      <label>Apagar histórico consumido há mais de</label>
+      <select id="cfg-limpeza-meses" onchange="previewLimpezaHistorico()">
+        <option value="6">6 meses</option>
+        <option value="9">9 meses</option>
+        <option value="12" selected>12 meses</option>
+      </select>
+    </div>
+    <div id="cfg-limpeza-preview" style="font-size:13px;color:#555;background:#f8f8f5;border-radius:8px;padding:12px;margin-bottom:14px"></div>
+    <div class="btn-row">
+      <button class="btn" onclick="previewLimpezaHistorico()">↻ Atualizar contagem</button>
+      <button class="btn btn-danger" onclick="executarLimpezaHistorico()">Apagar histórico antigo</button>
+    </div>
+  </div>
+
   <!-- ZONA DE PERIGO -->
   <div class="card" style="border:1.5px solid #fde8e8">
     <div class="card-title" style="color:#c0392b">Zona de perigo</div>
@@ -1529,6 +1553,11 @@ const LS_KEY  = 'estoque_pa_v1';
 const CFG_KEY = 'estoque_pa_cfg_v1';
 const PROD_KEY = 'estoque_pa_produtos_v1';
 
+// Limite de segurança: bloqueia lançamentos de entrada com quantidade
+// de caixas acima deste valor (evita erro de digitação gerar milhares
+// de lotes e sobrecarregar o banco de dados).
+const LIMITE_CAIXAS_ENTRADA = 100;
+
 let produtos     = PRODUTOS_INICIAIS.map(p=>({...p, origem:'importado', ativo:true}));
 let lotes        = []; // cada entrada gera um ou mais lotes (um por caixa)
 let embalagens   = []; // equivalente a caixas/lotes físicos individuais
@@ -1654,6 +1683,85 @@ async function carregarProdutos(){
       }
     });
   }catch(e){ console.warn('Erro ao carregar produtos:', e); }
+}
+
+// ── Limpeza de histórico antigo (lotes já 100% consumidos) ────────────
+function _loteIdDoMov(m){
+  // Movs de ENTRADA guardam 'Grupo <id>' no campo lote; os demais tipos
+  // (SAÍDA, AJUSTE, RESÍDUO) usam o código da embalagem no campo codigo.
+  if(m.lote && String(m.lote).startsWith('Grupo ')) return parseInt(m.lote.replace('Grupo ',''),10);
+  return null;
+}
+
+function _lotesElegiveisLimpeza(meses){
+  const limite = new Date();
+  limite.setMonth(limite.getMonth()-meses);
+  limite.setHours(0,0,0,0);
+
+  return lotes.filter(l=>{
+    const embsDoLote = embalagens.filter(e=>e.lote_id===l.id);
+    if(!embsDoLote.length) return false; // sem embalagens vinculadas — não mexe, por segurança
+    const totalmenteConsumido = embsDoLote.every(e=>e.status==='consumida');
+    if(!totalmenteConsumido) return false; // ainda tem caixa em estoque — nunca apaga
+    const partes = String(l.data_entrada||'').split('/');
+    if(partes.length!==3) return false;
+    const [dd,mm,aaaa] = partes;
+    const dataEntrada = new Date(+aaaa, (+mm)-1, +dd);
+    if(isNaN(dataEntrada.getTime())) return false;
+    return dataEntrada < limite;
+  });
+}
+
+function previewLimpezaHistorico(){
+  const el = document.getElementById('cfg-limpeza-preview');
+  if(!el) return;
+  const meses = parseInt(document.getElementById('cfg-limpeza-meses').value)||12;
+  const elegiveis = _lotesElegiveisLimpeza(meses);
+
+  if(!elegiveis.length){
+    el.innerHTML = `Nenhum lote totalmente consumido há mais de ${meses} meses encontrado. Nada a apagar no momento.`;
+    return;
+  }
+
+  const idsSet = new Set(elegiveis.map(l=>l.id));
+  const embsDosLotes = embalagens.filter(e=>idsSet.has(e.lote_id));
+  const codigosSet = new Set(embsDosLotes.map(e=>e.codigo));
+  const movsCount = movs.filter(m=>{
+    const loteIdMov = _loteIdDoMov(m);
+    return (loteIdMov!==null && idsSet.has(loteIdMov)) || codigosSet.has(m.codigo);
+  }).length;
+  const ajustesCount = ajustes.filter(a=>codigosSet.has(a.codigo)).length;
+
+  el.innerHTML = `Serão apagados: <strong>${elegiveis.length}</strong> lote${elegiveis.length!==1?'s':''} ·
+    <strong>${embsDosLotes.length}</strong> embalagem${embsDosLotes.length!==1?'ns':'s'} ·
+    <strong>${movsCount}</strong> registro${movsCount!==1?'s':''} de histórico ·
+    <strong>${ajustesCount}</strong> ajuste${ajustesCount!==1?'s':''}.`;
+}
+
+async function executarLimpezaHistorico(){
+  const meses = parseInt(document.getElementById('cfg-limpeza-meses').value)||12;
+  const elegiveis = _lotesElegiveisLimpeza(meses);
+  if(!elegiveis.length){ toast('Nenhum lote elegível para limpeza'); return; }
+
+  const idsSet = new Set(elegiveis.map(l=>l.id));
+  const codigosSet = new Set(embalagens.filter(e=>idsSet.has(e.lote_id)).map(e=>e.codigo));
+
+  if(!confirm(`Apagar ${elegiveis.length} lote(s) já consumido(s) há mais de ${meses} meses, junto com o histórico ligado a eles?\n\nEsta ação não pode ser desfeita. Recomendado: exporte um backup antes de confirmar.`)) return;
+
+  lotes = lotes.filter(l=>!idsSet.has(l.id));
+  embalagens = embalagens.filter(e=>!idsSet.has(e.lote_id));
+  movs = movs.filter(m=>{
+    const loteIdMov = _loteIdDoMov(m);
+    if(loteIdMov!==null && idsSet.has(loteIdMov)) return false;
+    if(codigosSet.has(m.codigo)) return false;
+    return true;
+  });
+  ajustes = ajustes.filter(a=>!codigosSet.has(a.codigo));
+
+  await salvarAuto();
+  toast(`Histórico limpo: ${elegiveis.length} lote(s) removido(s)`);
+  previewLimpezaHistorico();
+  renderTabelaAjustes();
 }
 
 async function limparTodosDados(){
@@ -1922,6 +2030,7 @@ function calcResumoEntrada(){
   let linhas='';
   if(cx>0) linhas+=`<div>📦 <strong>${cx} caixa${cx>1?'s':''}</strong> completa${cx>1?'s':''} de ${upx} unidades = <strong>${cx*upx} unidades</strong></div>`;
   if(av>0) linhas+=`<div>📦 <strong>1 caixa avulsa</strong> com ${av} unidades</div>`;
+  if(cx>LIMITE_CAIXAS_ENTRADA) linhas+=`<div style="color:#c0392b;font-weight:600">⚠ Acima do limite de ${LIMITE_CAIXAS_ENTRADA} caixas por lançamento — confira o valor digitado</div>`;
   document.getElementById('resumo-linhas').innerHTML=linhas;
   const total=(cx*upx)+av;
   document.getElementById('resumo-total').textContent=`Total: ${total} marmitas / ${cx+(av>0?1:0)} caixa${(cx+(av>0?1:0))>1?'s':''}`;
@@ -1933,6 +2042,11 @@ function irStep3(){
   const cx=parseInt(document.getElementById('ei-caixas').value)||0;
   const av=parseInt(document.getElementById('ei-avulsas').value)||0;
   if(!cx&&!av){toast('Informe ao menos 1 caixa ou quantidade avulsa');return;}
+  if(cx>LIMITE_CAIXAS_ENTRADA){
+    toast(`Quantidade suspeita: ${cx} caixas em um único lançamento (limite: ${LIMITE_CAIXAS_ENTRADA}). Verifique se não houve erro de digitação. Se for realmente correto, lance em partes menores ou fale com o admin.`);
+    document.getElementById('ei-caixas').focus();
+    return;
+  }
   const dataProd=document.getElementById('e-producao').value;
   const val=document.getElementById('e-validade').value;
   const resp=document.getElementById('e-responsavel').value||'—';
@@ -3743,6 +3857,7 @@ function initConfig(){
   document.getElementById('backup-feedback').style.display='none';
   if(!cfgRequisicao||!Object.keys(cfgRequisicao).length) cfgRequisicao=getReqCfgDefault();
   setReqCfgLoja(reqCfgLojaAtiva);
+  previewLimpezaHistorico();
 }
 
 // ── Responsáveis ──────────────────────────────────────────────────────
